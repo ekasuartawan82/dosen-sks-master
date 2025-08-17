@@ -1,52 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import WorkloadCard from "./WorkloadCard";
 import { Users, BookOpen, GraduationCap, TrendingUp } from "lucide-react";
-
-// Mock data - will be replaced with real data from Supabase
-const mockLecturers = [
-  {
-    id: "1",
-    name: "Dr. Budi Santoso, M.Kom.",
-    status: "Fungsional",
-    structuralPosition: "Kaprodi",
-    teachingSKS: 9.0,
-    structuralSKS: 3,
-    totalWorkload: 12.0
-  },
-  {
-    id: "2", 
-    name: "Siti Rahayu, S.Kom., M.T.",
-    status: "Fungsional",
-    structuralPosition: "Tidak Ada",
-    teachingSKS: 10.5,
-    structuralSKS: 0,
-    totalWorkload: 10.5
-  },
-  {
-    id: "3",
-    name: "Ahmad Hidayat, M.Cs.",
-    status: "Non-Fungsional", 
-    structuralPosition: "Wadir",
-    teachingSKS: 9.5,
-    structuralSKS: 4,
-    totalWorkload: 13.5
-  },
-  {
-    id: "4",
-    name: "Maya Sari, S.T., M.Kom.",
-    status: "Praktisi",
-    structuralPosition: "Tidak Ada",
-    teachingSKS: 8.0,
-    structuralSKS: 0,
-    totalWorkload: 8.0
-  }
-];
+import { useLecturers } from "@/hooks/useLecturers";
 
 const Dashboard = () => {
-  const totalLecturers = mockLecturers.length;
-  const sufficientWorkload = mockLecturers.filter(l => l.totalWorkload === 12).length;
-  const insufficientWorkload = mockLecturers.filter(l => l.totalWorkload < 12).length;
-  const excessWorkload = mockLecturers.filter(l => l.totalWorkload > 12).length;
+  const { data: lecturers = [], isLoading, error } = useLecturers();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Memuat data dosen...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <p className="text-destructive">Error memuat data: {error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalLecturers = lecturers.length;
+  const sufficientWorkload = lecturers.filter(l => l.totalWorkload === 12).length;
+  const insufficientWorkload = lecturers.filter(l => l.totalWorkload < 12).length;
+  const excessWorkload = lecturers.filter(l => l.totalWorkload > 12).length;
 
   const stats = [
     {
@@ -110,23 +93,23 @@ const Dashboard = () => {
       <div>
         <h2 className="text-xl font-semibold mb-4">Status Beban Kerja Dosen</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockLecturers.map((lecturer) => (
+          {lecturers.map((lecturer) => (
             <WorkloadCard key={lecturer.id} lecturer={lecturer} />
           ))}
         </div>
       </div>
 
-      {/* Connect Supabase Notice */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+      {/* System Status */}
+      <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
         <CardContent className="pt-6">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 rounded-full">
-              <BookOpen className="h-6 w-6 text-blue-600" />
+            <div className="p-3 bg-green-100 rounded-full">
+              <GraduationCap className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-blue-900">Siap untuk Data Real</h3>
-              <p className="text-blue-700 text-sm">
-                Interface sudah siap. Hubungkan dengan Supabase untuk mengelola data dosen, mata kuliah, dan penugasan.
+              <h3 className="font-semibold text-green-900">Sistem Aktif</h3>
+              <p className="text-green-700 text-sm">
+                Database terhubung dan menampilkan data real-time dari {totalLecturers} dosen dengan perhitungan SKS otomatis.
               </p>
             </div>
           </div>
