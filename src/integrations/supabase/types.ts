@@ -14,7 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assignments: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          lecturer_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          lecturer_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          lecturer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_lecturer_id_fkey"
+            columns: ["lecturer_id"]
+            isOneToOne: false
+            referencedRelation: "lecturers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          created_at: string
+          id: string
+          level: number
+          name: string
+          sks: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level: number
+          name: string
+          sks: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number
+          name?: string
+          sks?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lecturers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["lecturer_status"]
+          structural_position: Database["public"]["Enums"]["structural_position"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          status: Database["public"]["Enums"]["lecturer_status"]
+          structural_position?: Database["public"]["Enums"]["structural_position"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["lecturer_status"]
+          structural_position?: Database["public"]["Enums"]["structural_position"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +112,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      lecturer_status: "Fungsional" | "Non-Fungsional" | "Praktisi"
+      structural_position:
+        | "Tidak Ada"
+        | "Direktur"
+        | "Wadir"
+        | "Kapus"
+        | "Kanit"
+        | "Kaprodi"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +246,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      lecturer_status: ["Fungsional", "Non-Fungsional", "Praktisi"],
+      structural_position: [
+        "Tidak Ada",
+        "Direktur",
+        "Wadir",
+        "Kapus",
+        "Kanit",
+        "Kaprodi",
+      ],
+    },
   },
 } as const

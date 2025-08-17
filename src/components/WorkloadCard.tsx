@@ -12,6 +12,12 @@ interface WorkloadCardProps {
     teachingSKS: number;
     structuralSKS: number;
     totalWorkload: number;
+    courses?: Array<{
+      id: string;
+      name: string;
+      sks: number;
+      sharedWith: number;
+    }>;
   };
 }
 
