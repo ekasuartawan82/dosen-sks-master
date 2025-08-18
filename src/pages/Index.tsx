@@ -4,6 +4,7 @@ import Dashboard from "@/components/Dashboard";
 import LecturersPage from "@/components/LecturersPage";
 import CoursesPage from "@/components/CoursesPage";
 import AssignmentsPage from "@/components/AssignmentsPage";
+import PostsSection from "@/components/PostsSection";
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -18,6 +19,8 @@ const Index = () => {
         return <CoursesPage />;
       case "assignments":
         return <AssignmentsPage />;
+      case "posts":
+        return <PostsSection />;
       default:
         return <Dashboard />;
     }
