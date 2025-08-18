@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Users, BookOpen, BarChart3, Menu, X } from "lucide-react";
+import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,12 +13,23 @@ interface LayoutProps {
 
 const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast.error("Gagal keluar");
+    } else {
+      toast.success("Berhasil keluar");
+    }
+  };
 
   const navigation = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "lecturers", label: "Data Dosen", icon: Users },
     { id: "courses", label: "Data Mata Kuliah", icon: BookOpen },
     { id: "assignments", label: "Plotting Dosen", icon: GraduationCap },
+    { id: "posts", label: "Pengumuman", icon: MessageSquare },
   ];
 
   return (
@@ -96,6 +109,22 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
                 <p className="text-sm font-medium">Sistem Plotting Beban Mengajar</p>
                 <p className="text-xs text-muted-foreground">Program Studi Diploma 3</p>
               </div>
+              {user ? (
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 text-sm">
+                    <User className="h-4 w-4" />
+                    <span>{user.email}</span>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => window.location.href = '/auth'}>
+                  <User className="h-4 w-4 mr-2" />
+                  Masuk
+                </Button>
+              )}
             </div>
           </div>
         </header>
