@@ -2,14 +2,22 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Users } from "lucide-react";
+import { Plus, Search, Users, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLecturers } from "@/hooks/useLecturers";
 import { useCourses } from "@/hooks/useCourses";
+import AssignmentForm from "./forms/AssignmentForm";
 
 const AssignmentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
   const { data: lecturers, isLoading: lecturersLoading } = useLecturers();
   const { data: courses, isLoading: coursesLoading } = useCourses();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const isLoading = lecturersLoading || coursesLoading;
 
@@ -25,6 +33,29 @@ const AssignmentsPage = () => {
       lecturer.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
+
+  const handleRemoveAssignment = async (courseId: string, lecturerId: string, lecturerName: string) => {
+    try {
+      const { error } = await supabase
+        .from('assignments')
+        .delete()
+        .eq('course_id', courseId)
+        .eq('lecturer_id', lecturerId);
+
+      if (error) throw error;
+
+      toast({ title: `Penugasan ${lecturerName} berhasil dihapus` });
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['lecturers'] });
+    } catch (error) {
+      console.error('Error removing assignment:', error);
+      toast({
+        title: "Gagal menghapus penugasan",
+        description: "Terjadi kesalahan saat menghapus penugasan",
+        variant: "destructive"
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -45,7 +76,7 @@ const AssignmentsPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Plotting Dosen</h1>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setShowForm(true)}>
           <Plus className="h-4 w-4" />
           Tambah Penugasan
         </Button>
@@ -87,7 +118,7 @@ const AssignmentsPage = () => {
                       const lecturerData = lecturers?.find(l => l.id === lecturer.id);
                       return (
                         <div key={lecturer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium text-sm">{lecturer.name}</p>
                             {lecturerData && (
                               <p className="text-xs text-muted-foreground">
@@ -95,11 +126,38 @@ const AssignmentsPage = () => {
                               </p>
                             )}
                           </div>
-                          {assignment.lecturers.length > 1 && (
-                            <div className="text-xs text-muted-foreground">
-                              {(assignment.course.sks / assignment.lecturers.length).toFixed(1)} SKS
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {assignment.lecturers.length > 1 && (
+                              <div className="text-xs text-muted-foreground">
+                                {(assignment.course.sks / assignment.lecturers.length).toFixed(1)} SKS
+                              </div>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="outline">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Hapus Penugasan</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Apakah Anda yakin ingin menghapus penugasan {lecturer.name} 
+                                    dari mata kuliah {assignment.course.name}?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleRemoveAssignment(assignment.course.id, lecturer.id, lecturer.name)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Hapus
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                       );
                     })}
@@ -130,6 +188,11 @@ const AssignmentsPage = () => {
           </p>
         </div>
       )}
+
+      <AssignmentForm
+        open={showForm}
+        onOpenChange={setShowForm}
+      />
     </div>
   );
 };

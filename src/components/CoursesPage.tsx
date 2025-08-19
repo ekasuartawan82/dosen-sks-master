@@ -3,16 +3,72 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, BookOpen } from "lucide-react";
+import { Plus, Search, BookOpen, Edit, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCourses } from "@/hooks/useCourses";
+import CourseForm from "./forms/CourseForm";
 
 const CoursesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<any>(null);
   const { data: courses, isLoading } = useCourses();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const filteredCourses = courses?.filter(course =>
     course.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  const handleDelete = async (courseId: string, courseName: string) => {
+    try {
+      // Check if course has assignments
+      const { data: assignments } = await supabase
+        .from('assignments')
+        .select('id')
+        .eq('course_id', courseId);
+
+      if (assignments && assignments.length > 0) {
+        toast({
+          title: "Tidak dapat menghapus mata kuliah",
+          description: "Mata kuliah masih memiliki penugasan dosen. Hapus penugasan terlebih dahulu.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('courses')
+        .delete()
+        .eq('id', courseId);
+
+      if (error) throw error;
+
+      toast({ title: `Mata kuliah ${courseName} berhasil dihapus` });
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['lecturers'] });
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      toast({
+        title: "Gagal menghapus mata kuliah",
+        description: "Terjadi kesalahan saat menghapus data mata kuliah",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEdit = (course: any) => {
+    setEditingCourse(course);
+    setShowForm(true);
+  };
+
+  const handleFormClose = () => {
+    setShowForm(false);
+    setEditingCourse(null);
+  };
 
   if (isLoading) {
     return (
@@ -33,7 +89,7 @@ const CoursesPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Data Mata Kuliah</h1>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setShowForm(true)}>
           <Plus className="h-4 w-4" />
           Tambah Mata Kuliah
         </Button>
@@ -62,7 +118,41 @@ const CoursesPage = () => {
                     <p className="text-sm text-muted-foreground">Level {course.level}</p>
                   </div>
                 </div>
-                <Badge variant="secondary">{course.sks} SKS</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{course.sks} SKS</Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(course)}
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus Mata Kuliah</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Apakah Anda yakin ingin menghapus mata kuliah {course.name}? 
+                          Aksi ini tidak dapat dibatalkan.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleDelete(course.id, course.name)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Hapus
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </CardHeader>
             
@@ -97,6 +187,12 @@ const CoursesPage = () => {
           </p>
         </div>
       )}
+
+      <CourseForm
+        open={showForm}
+        onOpenChange={handleFormClose}
+        course={editingCourse}
+      />
     </div>
   );
 };
