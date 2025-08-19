@@ -3,13 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, User } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLecturers } from "@/hooks/useLecturers";
 import StatusBadge from "./StatusBadge";
+import LecturerForm from "./forms/LecturerForm";
 
 const LecturersPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingLecturer, setEditingLecturer] = useState<any>(null);
   const { data: lecturers, isLoading } = useLecturers();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const filteredLecturers = lecturers?.filter(lecturer =>
     lecturer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -21,6 +30,52 @@ const LecturersPage = () => {
     if (total < targetSKS) return "insufficient";
     if (total === targetSKS) return "sufficient";
     return "excess";
+  };
+
+  const handleDelete = async (lecturerId: string, lecturerName: string) => {
+    try {
+      // Check if lecturer has assignments
+      const { data: assignments } = await supabase
+        .from('assignments')
+        .select('id')
+        .eq('lecturer_id', lecturerId);
+
+      if (assignments && assignments.length > 0) {
+        toast({
+          title: "Tidak dapat menghapus dosen",
+          description: "Dosen masih memiliki penugasan mata kuliah. Hapus penugasan terlebih dahulu.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('lecturers')
+        .delete()
+        .eq('id', lecturerId);
+
+      if (error) throw error;
+
+      toast({ title: `Dosen ${lecturerName} berhasil dihapus` });
+      queryClient.invalidateQueries({ queryKey: ['lecturers'] });
+    } catch (error) {
+      console.error('Error deleting lecturer:', error);
+      toast({
+        title: "Gagal menghapus dosen",
+        description: "Terjadi kesalahan saat menghapus data dosen",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEdit = (lecturer: any) => {
+    setEditingLecturer(lecturer);
+    setShowForm(true);
+  };
+
+  const handleFormClose = () => {
+    setShowForm(false);
+    setEditingLecturer(null);
   };
 
   if (isLoading) {
@@ -42,7 +97,7 @@ const LecturersPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Data Dosen</h1>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setShowForm(true)}>
           <Plus className="h-4 w-4" />
           Tambah Dosen
         </Button>
@@ -78,6 +133,40 @@ const LecturersPage = () => {
                 </div>
                 
                 <div className="text-right space-y-2">
+                  <div className="flex gap-2 justify-end mb-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(lecturer)}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Hapus Dosen</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Apakah Anda yakin ingin menghapus dosen {lecturer.name}? 
+                            Aksi ini tidak dapat dibatalkan.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleDelete(lecturer.id, lecturer.name)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Hapus
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                   <StatusBadge status={getWorkloadStatus(lecturer.totalWorkload)} />
                   <div className="text-sm text-muted-foreground">
                     <div>Total: <span className="font-medium">{lecturer.totalWorkload.toFixed(1)} SKS</span></div>
@@ -117,6 +206,12 @@ const LecturersPage = () => {
           </p>
         </div>
       )}
+
+      <LecturerForm
+        open={showForm}
+        onOpenChange={handleFormClose}
+        lecturer={editingLecturer}
+      />
     </div>
   );
 };
