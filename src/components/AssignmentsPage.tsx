@@ -1,71 +1,120 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trash2, Search, Plus, BookOpen, Users, GraduationCap } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Users, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import { useLecturers } from "@/hooks/useLecturers";
 import { useCourses } from "@/hooks/useCourses";
+import { useClasses } from "@/hooks/useClasses";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import AssignmentForm from "./forms/AssignmentForm";
 
 const AssignmentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const [selectedClass, setSelectedClass] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
-  const { data: lecturers, isLoading: lecturersLoading } = useLecturers();
-  const { data: courses, isLoading: coursesLoading } = useCourses();
+  const { data: lecturers, isLoading: loadingLecturers } = useLecturers();
+  const { data: courses, isLoading: loadingCourses } = useCourses();
+  const { data: allClasses, isLoading: loadingClasses } = useClasses();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const isLoading = lecturersLoading || coursesLoading;
+  // Get classes for selected level
+  const availableClasses = allClasses?.filter(cls => 
+    !selectedLevel || cls.level.toString() === selectedLevel
+  ) || [];
 
-  // Create assignment data by combining courses with their assigned lecturers
-  const assignments = courses?.map(course => ({
-    course,
-    lecturers: course.assignedLecturers || []
-  })) || [];
+  // Get courses for selected level
+  const availableCourses = courses?.filter(course => 
+    !selectedLevel || course.level.toString() === selectedLevel
+  ) || [];
 
-  const filteredAssignments = assignments.filter(assignment =>
-    assignment.course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  // Combine courses and lecturers to create assignments
+  const assignments = availableCourses?.map(course => {
+    const assignedLecturers = course.assignedLecturers || [];
+    
+    // Filter lecturers by selected class if a class is selected
+    const filteredLecturers = selectedClass 
+      ? assignedLecturers.filter(lecturer => lecturer.classId === selectedClass)
+      : assignedLecturers;
+
+    return {
+      courseId: course.id,
+      courseName: course.name,
+      courseSKS: course.sks,
+      courseLevel: course.level,
+      lecturers: filteredLecturers,
+      hasAssignments: filteredLecturers.length > 0
+    };
+  }) || [];
+
+  // Filter assignments based on search query
+  const filteredAssignments = assignments.filter(assignment => 
+    assignment.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     assignment.lecturers.some(lecturer => 
       lecturer.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
-  const handleRemoveAssignment = async (courseId: string, lecturerId: string, lecturerName: string) => {
+  const handleRemoveAssignment = async (courseId: string, lecturerId: string, lecturerName: string, classId?: string) => {
     try {
-      const { error } = await supabase
+      let query = supabase
         .from('assignments')
         .delete()
         .eq('course_id', courseId)
         .eq('lecturer_id', lecturerId);
 
+      if (classId) {
+        query = query.eq('class_id', classId);
+      } else {
+        query = query.is('class_id', null);
+      }
+
+      const { error } = await query;
+
       if (error) throw error;
 
-      toast({ title: `Penugasan ${lecturerName} berhasil dihapus` });
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      queryClient.invalidateQueries({ queryKey: ['lecturers'] });
-    } catch (error) {
-      console.error('Error removing assignment:', error);
+      const className = classId 
+        ? allClasses?.find(cls => cls.id === classId)?.name 
+        : "tanpa kelas";
+
       toast({
-        title: "Gagal menghapus penugasan",
-        description: "Terjadi kesalahan saat menghapus penugasan",
-        variant: "destructive"
+        title: "Penugasan dihapus",
+        description: `${lecturerName} telah dihapus dari mata kuliah ini (${className}).`,
+      });
+
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['lecturers'] });
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal menghapus penugasan",
+        variant: "destructive",
       });
     }
   };
 
-  if (isLoading) {
+  if (loadingLecturers || loadingCourses || loadingClasses) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Plotting Dosen</h1>
+          <div>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-96 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-32" />
         </div>
-        <div className="grid gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-40" />
           ))}
         </div>
       </div>
@@ -75,37 +124,86 @@ const AssignmentsPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Plotting Dosen</h1>
-        <Button className="gap-2" onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4" />
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Ploting Dosen</h1>
+          <p className="text-muted-foreground">
+            Kelola penugasan dosen untuk setiap mata kuliah berdasarkan kelas
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)}>
+          <Plus className="mr-2 h-4 w-4" />
           Tambah Penugasan
         </Button>
       </div>
 
-      <div className="flex items-center space-x-2 max-w-md">
-        <Search className="h-4 w-4 text-muted-foreground" />
+      {/* Filters */}
+      <div className="flex gap-4 items-center">
+        <div className="flex-1">
+          <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Pilih Tingkat" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Semua Tingkat</SelectItem>
+              <SelectItem value="1">Tingkat 1</SelectItem>
+              <SelectItem value="2">Tingkat 2</SelectItem>
+              <SelectItem value="3">Tingkat 3</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {selectedLevel && (
+          <div className="flex-1">
+            <Select value={selectedClass} onValueChange={setSelectedClass}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Pilih Kelas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Semua Kelas</SelectItem>
+                {availableClasses.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
           placeholder="Cari mata kuliah atau dosen..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
         />
       </div>
 
-      <div className="grid gap-4">
+      <div className="space-y-4">
         {filteredAssignments.map((assignment) => (
-          <Card key={assignment.course.id} className="hover:shadow-md transition-shadow">
+          <Card key={assignment.courseId} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg">{assignment.course.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Level {assignment.course.level} • {assignment.course.sks} SKS
-                  </p>
+                  <CardTitle className="text-lg">{assignment.courseName}</CardTitle>
+                  <CardDescription>
+                    <div className="flex items-center gap-4 mt-1">
+                      <span className="flex items-center gap-1">
+                        <GraduationCap className="h-4 w-4" />
+                        Tingkat {assignment.courseLevel}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <BookOpen className="h-4 w-4" />
+                        {assignment.courseSKS} SKS
+                      </span>
+                    </div>
+                  </CardDescription>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  {assignment.lecturers.length} Dosen
-                </div>
+                <Badge variant="secondary">
+                  {assignment.lecturers.length} dosen
+                </Badge>
               </div>
             </CardHeader>
             
@@ -113,65 +211,57 @@ const AssignmentsPage = () => {
               {assignment.lecturers.length > 0 ? (
                 <div className="space-y-3">
                   <h4 className="font-medium text-sm">Dosen yang Ditugaskan:</h4>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {assignment.lecturers.map((lecturer) => {
-                      const lecturerData = lecturers?.find(l => l.id === lecturer.id);
-                      return (
-                        <div key={lecturer.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{lecturer.name}</p>
-                            {lecturerData && (
-                              <p className="text-xs text-muted-foreground">
-                                Total beban: {lecturerData.totalWorkload.toFixed(1)} SKS
-                              </p>
-                            )}
+                  <div className="space-y-2">
+                    {assignment.lecturers.map((lecturer) => (
+                      <div key={`${lecturer.id}-${lecturer.classId}`} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-medium text-primary">
+                              {lecturer.name.charAt(0)}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {assignment.lecturers.length > 1 && (
-                              <div className="text-xs text-muted-foreground">
-                                {(assignment.course.sks / assignment.lecturers.length).toFixed(1)} SKS
-                              </div>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{lecturer.name}</span>
+                            {lecturer.className && (
+                              <span className="text-sm text-muted-foreground">
+                                {lecturer.className}
+                              </span>
                             )}
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="outline">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Hapus Penugasan</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Apakah Anda yakin ingin menghapus penugasan {lecturer.name} 
-                                    dari mata kuliah {assignment.course.name}?
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleRemoveAssignment(assignment.course.id, lecturer.id, lecturer.name)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Hapus
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
                           </div>
                         </div>
-                      );
-                    })}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Hapus Penugasan</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Apakah Anda yakin ingin menghapus {lecturer.name} dari mata kuliah {assignment.courseName}
+                                {lecturer.className ? ` di ${lecturer.className}` : ''}?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleRemoveAssignment(assignment.courseId, lecturer.id, lecturer.name, lecturer.classId)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Hapus
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ))}
                   </div>
-                  {assignment.lecturers.length > 1 && (
-                    <p className="text-xs text-muted-foreground italic">
-                      Team teaching: SKS dibagi {assignment.lecturers.length} dosen
-                    </p>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Belum ada dosen yang ditugaskan</p>
+                  <p className="text-sm">Belum ada dosen yang ditugaskan untuk filter ini</p>
                 </div>
               )}
             </CardContent>
@@ -181,10 +271,12 @@ const AssignmentsPage = () => {
 
       {filteredAssignments.length === 0 && (
         <div className="text-center py-12">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">Tidak ada penugasan ditemukan</h3>
+          <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium">Tidak ada mata kuliah ditemukan</h3>
           <p className="text-muted-foreground">
-            {searchQuery ? "Coba kata kunci lain" : "Belum ada data penugasan"}
+            {searchQuery ? "Coba kata kunci pencarian yang berbeda" : 
+             selectedLevel ? "Pilih kelas atau ubah filter tingkat" : 
+             "Pilih tingkat untuk melihat mata kuliah"}
           </p>
         </div>
       )}
@@ -192,6 +284,8 @@ const AssignmentsPage = () => {
       <AssignmentForm
         open={showForm}
         onOpenChange={setShowForm}
+        selectedLevel={selectedLevel}
+        selectedClass={selectedClass}
       />
     </div>
   );
