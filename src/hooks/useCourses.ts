@@ -11,6 +11,8 @@ export interface Course {
   assignedLecturers?: Array<{
     id: string;
     name: string;
+    className?: string;
+    classId?: string;
   }>;
 }
 
@@ -31,6 +33,10 @@ export const useCourses = () => {
             lecturers (
               id,
               name
+            ),
+            classes (
+              id,
+              name
             )
           )
         `)
@@ -40,7 +46,11 @@ export const useCourses = () => {
 
       return courses.map(course => ({
         ...course,
-        assignedLecturers: course.assignments.map(assignment => assignment.lecturers)
+        assignedLecturers: course.assignments.map(assignment => ({
+          ...assignment.lecturers,
+          className: assignment.classes?.name,
+          classId: assignment.classes?.id
+        }))
       }));
     }
   });

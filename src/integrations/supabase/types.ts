@@ -16,24 +16,34 @@ export type Database = {
     Tables: {
       assignments: {
         Row: {
+          class_id: string | null
           course_id: string
           created_at: string
           id: string
           lecturer_id: string
         }
         Insert: {
+          class_id?: string | null
           course_id: string
           created_at?: string
           id?: string
           lecturer_id: string
         }
         Update: {
+          class_id?: string | null
           course_id?: string
           created_at?: string
           id?: string
           lecturer_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assignments_course_id_fkey"
             columns: ["course_id"]
@@ -49,6 +59,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      classes: {
+        Row: {
+          created_at: string
+          id: string
+          level: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       courses: {
         Row: {

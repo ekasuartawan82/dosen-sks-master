@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import Dashboard from "@/components/Dashboard";
 import LecturersPage from "@/components/LecturersPage";
 import CoursesPage from "@/components/CoursesPage";
+import ClassesPage from "@/components/ClassesPage";
 import AssignmentsPage from "@/components/AssignmentsPage";
 import PostsSection from "@/components/PostsSection";
 
@@ -17,6 +18,8 @@ const Index = () => {
         return <LecturersPage />;
       case "courses":
         return <CoursesPage />;
+      case "classes":
+        return <ClassesPage />;
       case "assignments":
         return <AssignmentsPage />;
       case "posts":
