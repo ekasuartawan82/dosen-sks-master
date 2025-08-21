@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Search, Plus, BookOpen, Users, GraduationCap } from "lucide-react";
+import { Trash2, Search, Plus, BookOpen, Users, GraduationCap, Settings } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +14,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import AssignmentForm from "./forms/AssignmentForm";
+import { ClassForm } from "./forms/ClassForm";
 
 const AssignmentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<string>("");
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
+  const [showClassForm, setShowClassForm] = useState(false);
   const { data: lecturers, isLoading: loadingLecturers } = useLecturers();
   const { data: courses, isLoading: loadingCourses } = useCourses();
   const { data: allClasses, isLoading: loadingClasses } = useClasses();
@@ -130,10 +132,16 @@ const AssignmentsPage = () => {
             Kelola penugasan dosen untuk setiap mata kuliah berdasarkan kelas
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Tambah Penugasan
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowClassForm(true)}>
+            <Settings className="mr-2 h-4 w-4" />
+            Kelola Kelas
+          </Button>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Penugasan
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -153,7 +161,7 @@ const AssignmentsPage = () => {
         </div>
         
         {selectedLevel && (
-          <div className="flex-1">
+          <div className="flex-1 flex gap-2 items-center">
             <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Pilih Kelas" />
@@ -167,6 +175,16 @@ const AssignmentsPage = () => {
                 ))}
               </SelectContent>
             </Select>
+            {selectedLevel !== "all" && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowClassForm(true)}
+                title="Tambah kelas untuk tingkat ini"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -286,6 +304,17 @@ const AssignmentsPage = () => {
         onOpenChange={setShowForm}
         selectedLevel={selectedLevel}
         selectedClass={selectedClass}
+      />
+      
+      <ClassForm
+        open={showClassForm}
+        onOpenChange={(open) => {
+          setShowClassForm(open);
+          if (!open) {
+            // Refresh classes data when form is closed
+            queryClient.invalidateQueries({ queryKey: ['classes'] });
+          }
+        }}
       />
     </div>
   );
