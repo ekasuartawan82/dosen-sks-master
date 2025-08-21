@@ -59,7 +59,7 @@ const AssignmentsPage = () => {
   const filteredAssignments = assignments.filter(assignment => 
     assignment.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     assignment.lecturers.some(lecturer => 
-      lecturer.name.toLowerCase().includes(searchQuery.toLowerCase())
+      lecturer.name?.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
@@ -214,14 +214,14 @@ const AssignmentsPage = () => {
                   <div className="space-y-2">
                     {assignment.lecturers.map((lecturer) => (
                       <div key={`${lecturer.id}-${lecturer.classId}`} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
-                              {lecturer.name.charAt(0)}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{lecturer.name}</span>
+                         <div className="flex items-center gap-3">
+                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                             <span className="text-sm font-medium text-primary">
+                               {lecturer.name ? lecturer.name.charAt(0) : '?'}
+                             </span>
+                           </div>
+                           <div className="flex flex-col">
+                             <span className="font-medium">{lecturer.name || 'Unknown Lecturer'}</span>
                             {lecturer.className && (
                               <span className="text-sm text-muted-foreground">
                                 {lecturer.className}
@@ -238,15 +238,15 @@ const AssignmentsPage = () => {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Hapus Penugasan</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Apakah Anda yakin ingin menghapus {lecturer.name} dari mata kuliah {assignment.courseName}
-                                {lecturer.className ? ` di ${lecturer.className}` : ''}?
-                              </AlertDialogDescription>
+                               <AlertDialogDescription>
+                                 Apakah Anda yakin ingin menghapus {lecturer.name || 'dosen ini'} dari mata kuliah {assignment.courseName}
+                                 {lecturer.className ? ` di ${lecturer.className}` : ''}?
+                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Batal</AlertDialogCancel>
                               <AlertDialogAction 
-                                onClick={() => handleRemoveAssignment(assignment.courseId, lecturer.id, lecturer.name, lecturer.classId)}
+                                onClick={() => handleRemoveAssignment(assignment.courseId, lecturer.id, lecturer.name || 'Unknown Lecturer', lecturer.classId)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Hapus
