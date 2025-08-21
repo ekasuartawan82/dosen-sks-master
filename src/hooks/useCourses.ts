@@ -10,7 +10,7 @@ export interface Course {
   updated_at: string;
   assignedLecturers?: Array<{
     id: string;
-    name: string;
+    name: string | null;
     className?: string;
     classId?: string;
   }>;
@@ -47,9 +47,12 @@ export const useCourses = () => {
       return courses.map(course => ({
         ...course,
         assignedLecturers: course.assignments.map(assignment => ({
-          ...assignment.lecturers,
+          ...(assignment.lecturers || {}),
           className: assignment.classes?.name,
-          classId: assignment.classes?.id
+          classId: assignment.classes?.id,
+          // Ensure required fields have defaults if lecturer data is not available
+          id: assignment.lecturers?.id || 'unknown',
+          name: assignment.lecturers?.name || null
         }))
       }));
     }
