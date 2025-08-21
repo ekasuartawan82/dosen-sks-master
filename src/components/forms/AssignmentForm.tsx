@@ -121,13 +121,13 @@ const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass 
     }
   };
 
-  // Find already assigned lecturers for the selected course and class
+  // Find already assigned lecturers for the selected course and specific class
   const selectedCourseData = courses?.find(c => c.id === selectedCourse);
   const alreadyAssignedLecturerIds = selectedCourseData?.assignedLecturers
-    ?.filter(lecturer => !formClass || lecturer.classId === formClass)
+    ?.filter(lecturer => lecturer.classId === formClass)
     ?.map(lecturer => lecturer.id) || [];
 
-  // Filter available lecturers (exclude already assigned ones)
+  // Filter available lecturers (exclude only those assigned to same course AND same class)
   const availableLecturers = lecturers?.filter(lecturer => 
     !alreadyAssignedLecturerIds.includes(lecturer.id)
   ) || [];
