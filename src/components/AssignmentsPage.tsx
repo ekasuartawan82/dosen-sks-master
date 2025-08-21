@@ -28,12 +28,12 @@ const AssignmentsPage = () => {
 
   // Get classes for selected level
   const availableClasses = allClasses?.filter(cls => 
-    !selectedLevel || cls.level.toString() === selectedLevel
+    !selectedLevel || selectedLevel === "all" || cls.level.toString() === selectedLevel
   ) || [];
 
   // Get courses for selected level
   const availableCourses = courses?.filter(course => 
-    !selectedLevel || course.level.toString() === selectedLevel
+    !selectedLevel || selectedLevel === "all" || course.level.toString() === selectedLevel
   ) || [];
 
   // Combine courses and lecturers to create assignments
@@ -41,7 +41,7 @@ const AssignmentsPage = () => {
     const assignedLecturers = course.assignedLecturers || [];
     
     // Filter lecturers by selected class if a class is selected
-    const filteredLecturers = selectedClass 
+    const filteredLecturers = selectedClass && selectedClass !== "all"
       ? assignedLecturers.filter(lecturer => lecturer.classId === selectedClass)
       : assignedLecturers;
 
@@ -144,7 +144,7 @@ const AssignmentsPage = () => {
               <SelectValue placeholder="Pilih Tingkat" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Semua Tingkat</SelectItem>
+              <SelectItem value="all">Semua Tingkat</SelectItem>
               <SelectItem value="1">Tingkat 1</SelectItem>
               <SelectItem value="2">Tingkat 2</SelectItem>
               <SelectItem value="3">Tingkat 3</SelectItem>
@@ -159,7 +159,7 @@ const AssignmentsPage = () => {
                 <SelectValue placeholder="Pilih Kelas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Kelas</SelectItem>
+                <SelectItem value="all">Semua Kelas</SelectItem>
                 {availableClasses.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
                     {cls.name}
