@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface LecturerWithWorkload {
   id: string;
   name: string;
-  status: string;
+  status: "sufficient" | "insufficient" | "excess";
   structuralPosition: string;
   teachingSKS: number;
   structuralSKS: number;
@@ -96,14 +96,26 @@ export const useLecturers = () => {
           };
         });
 
+        const totalWorkload = Math.round((teachingSKS + structuralSKS) * 100) / 100;
+        
+        // Calculate status based on workload
+        let status: "sufficient" | "insufficient" | "excess";
+        if (totalWorkload < 12) {
+          status = "insufficient";
+        } else if (totalWorkload === 12) {
+          status = "sufficient";
+        } else {
+          status = "excess";
+        }
+
         return {
           id: lecturer.id,
           name: lecturer.name,
-          status: lecturer.status,
+          status,
           structuralPosition: lecturer.structural_position,
           teachingSKS: Math.round(teachingSKS * 100) / 100, // Round to 2 decimal places
           structuralSKS,
-          totalWorkload: Math.round((teachingSKS + structuralSKS) * 100) / 100,
+          totalWorkload,
           courses
         };
       });
