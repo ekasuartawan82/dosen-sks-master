@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User } from "lucide-react";
+import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
     { id: "lecturers", label: "Data Dosen", icon: Users },
     { id: "courses", label: "Data Mata Kuliah", icon: BookOpen },
     { id: "assignments", label: "Plotting Dosen", icon: GraduationCap },
+    { id: "schedules", label: "Ploting Jadwal", icon: Calendar },
     { id: "posts", label: "Pengumuman", icon: MessageSquare },
   ];
 
