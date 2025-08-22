@@ -216,6 +216,74 @@ export type Database = {
         }
         Relationships: []
       }
+      schedules: {
+        Row: {
+          academic_year: string
+          assignment_id: string
+          created_at: string
+          day_of_week: number
+          has_conflict: boolean
+          id: string
+          time_slot: number
+          updated_at: string
+        }
+        Insert: {
+          academic_year: string
+          assignment_id: string
+          created_at?: string
+          day_of_week: number
+          has_conflict?: boolean
+          id?: string
+          time_slot: number
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string
+          assignment_id?: string
+          created_at?: string
+          day_of_week?: number
+          has_conflict?: boolean
+          id?: string
+          time_slot?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_profiles: {
@@ -244,7 +312,19 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      check_schedule_conflicts: {
+        Args: {
+          p_assignment_id: string
+          p_day_of_week: number
+          p_exclude_schedule_id?: string
+          p_time_slot: number
+        }
+        Returns: {
+          conflicted_class_name: string
+          conflicted_course_name: string
+          conflicted_lecturer_name: string
+        }[]
+      }
     }
     Enums: {
       lecturer_status: "Fungsional" | "Non-Fungsional" | "Praktisi"
