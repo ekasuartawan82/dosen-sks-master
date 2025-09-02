@@ -37,18 +37,31 @@ const CourseBank = ({ classId, academicYear }: CourseBankProps) => {
   }
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="text-base">Bank Mata Kuliah</CardTitle>
+    <Card className="h-full bg-gradient-to-br from-card to-card/50 border-2">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base flex items-center gap-2">
+          🏦 Bank Mata Kuliah
+        </CardTitle>
         <p className="text-sm text-muted-foreground">
           Drag mata kuliah ke grid jadwal untuk menjadwalkan
         </p>
+        {availableAssignments.length > 0 && (
+          <div className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-full inline-block w-fit">
+            {availableAssignments.length} mata kuliah tersedia
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[600px] pr-4">
           {availableAssignments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">Semua mata kuliah sudah dijadwalkan</p>
+            <div className="text-center py-12 space-y-3">
+              <div className="text-4xl mb-4">✅</div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Semua mata kuliah sudah dijadwalkan
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Jadwal kelas ini sudah lengkap
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

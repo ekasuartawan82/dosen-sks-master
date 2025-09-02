@@ -33,9 +33,9 @@ const DroppableSlot = ({ dayId, timeSlotId, sks, onDrop, isActive, children }: D
     <div
       ref={setNodeRef}
       className={cn(
-        "relative transition-colors duration-200",
-        isOver && isActive && "bg-green-100 dark:bg-green-900/20 border-green-300",
-        isOver && !isActive && "bg-red-100 dark:bg-red-900/20 border-red-300"
+        "relative transition-all duration-300",
+        isOver && isActive && "bg-success/20 ring-2 ring-success/50 rounded-lg",
+        isOver && !isActive && "bg-destructive/20 ring-2 ring-destructive/50 rounded-lg"
       )}
     >
       {children}
@@ -165,35 +165,42 @@ const DroppableScheduleGrid = ({
                     <div
                       key={`${day.id}-${timeSlot.id}`}
                       className={cn(
-                        "p-2 text-xs flex flex-col items-start justify-start relative bg-secondary border border-border rounded",
-                        `row-span-${schedule.totalSlots}`,
-                        schedule.has_conflict && "border-destructive bg-destructive/10"
+                        "group p-3 text-xs flex flex-col items-start justify-between relative rounded-lg transition-all duration-200",
+                        "bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20",
+                        "hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 hover:shadow-md",
+                        schedule.has_conflict && "border-destructive bg-gradient-to-br from-destructive/10 to-destructive/5"
                       )}
                       style={{
-                        gridRowEnd: `span ${schedule.totalSlots}`
+                        gridRowEnd: `span ${schedule.totalSlots}`,
+                        minHeight: `${schedule.totalSlots * 4}rem`
                       }}
                     >
-                      <button
+                      <Button
+                        variant="ghost" 
+                        size="sm"
                         onClick={() => handleDelete(schedule.id)}
-                        className="absolute top-1 right-1 p-0.5 rounded-full bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full bg-background/90 hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-all duration-200"
                         title="Hapus jadwal"
                       >
                         <X className="h-3 w-3" />
-                      </button>
+                      </Button>
                       
-                      <div className="w-full space-y-1">
-                        <div className="font-medium text-xs leading-tight pr-6">
+                      <div className="w-full space-y-2 pr-8">
+                        <div className="font-semibold text-sm leading-tight text-primary">
                           {schedule.assignments.courses.name}
                         </div>
-                        <div className="text-xs text-muted-foreground leading-tight">
+                        <div className="text-xs text-muted-foreground leading-tight font-medium">
                           {schedule.assignments.lecturers.name}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Badge variant="secondary" className="text-xs px-1 py-0">
+                        <div className="flex items-center gap-2 mt-auto">
+                          <Badge variant="outline" className="text-xs px-2 py-1 bg-background/50">
                             {schedule.assignments.courses.sks} SKS
                           </Badge>
                           {schedule.has_conflict && (
-                            <AlertTriangle className="h-3 w-3 text-destructive" />
+                            <div className="flex items-center gap-1 text-destructive">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span className="text-xs font-medium">Konflik</span>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -217,14 +224,30 @@ const DroppableScheduleGrid = ({
                     isActive={isDroppable}
                   >
                     <div className={cn(
-                      "h-16 p-2 text-xs flex flex-col items-center justify-center border-2 border-dashed rounded transition-colors duration-200",
-                      "border-muted-foreground/20 hover:border-muted-foreground/40",
-                      activeId && isDroppable && "border-green-300 bg-green-50 dark:bg-green-900/10",
-                      activeId && !isDroppable && "border-red-300 bg-red-50 dark:bg-red-900/10"
+                      "h-16 p-2 text-xs flex flex-col items-center justify-center border-2 border-dashed rounded-lg transition-all duration-300",
+                      "border-muted-foreground/20 hover:border-muted-foreground/40 hover:bg-muted/30",
+                      activeId && isDroppable && "border-success bg-success/10 shadow-lg scale-105",
+                      activeId && !isDroppable && "border-destructive bg-destructive/10"
                     )}>
-                      <span className="text-muted-foreground text-center">
-                        {activeId && !isDroppable ? "Tidak valid" : "Drop di sini"}
-                      </span>
+                      {activeId ? (
+                        <div className="text-center">
+                          <span className={cn(
+                            "font-medium",
+                            isDroppable ? "text-success" : "text-destructive"
+                          )}>
+                            {isDroppable ? "Drop di sini" : "Tidak valid"}
+                          </span>
+                          {isDroppable && draggedSKS && draggedSKS > 1 && (
+                            <div className="text-xs text-success/70 mt-1">
+                              {draggedSKS} slot diperlukan
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/60 text-center">
+                          Kosong
+                        </span>
+                      )}
                     </div>
                   </DroppableSlot>
                 );
