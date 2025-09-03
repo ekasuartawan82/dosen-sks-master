@@ -174,11 +174,11 @@ const DroppableScheduleGrid = ({
                   return (
                     <div 
                       key={`${day.id}-${timeSlot.id}`}
-                      className="p-2 bg-muted/20 rounded flex items-center justify-center"
+                      className="h-16 p-2 bg-muted/30 rounded flex items-center justify-center border-2 border-muted-foreground/20"
                     >
                       <div className="text-center">
                         <Clock className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-                        <span className="text-xs text-muted-foreground">Istirahat</span>
+                        <span className="text-xs font-bold text-muted-foreground">ISTIRAHAT</span>
                       </div>
                     </div>
                   );
