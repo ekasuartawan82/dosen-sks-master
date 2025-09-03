@@ -65,15 +65,28 @@ const DroppableScheduleGrid = ({
     if (!draggedSKS) return false;
     
     // Check if any required slots are occupied by existing schedules
-    for (let i = 0; i < sks; i++) {
-      const slotToCheck = timeSlot + i;
-      const timeSlotData = TIME_SLOTS.find(slot => slot.id === slotToCheck);
+    // For multi-SKS courses, we need to account for break times being skipped
+    let currentSlot = timeSlot;
+    let remainingSKS = sks;
+    
+    while (remainingSKS > 0) {
+      const timeSlotData = TIME_SLOTS.find(slot => slot.id === currentSlot);
       
       // Check if slot exists
       if (!timeSlotData) return false;
       
-      // Check if slot is already occupied by another schedule
-      if (getScheduleForSlot(dayOfWeek, slotToCheck)) return false;
+      // If it's a break slot, skip it (don't count towards SKS)
+      if (timeSlotData.isBreak) {
+        currentSlot++;
+        continue;
+      }
+      
+      // Check if non-break slot is already occupied by another schedule
+      if (getScheduleForSlot(dayOfWeek, currentSlot)) return false;
+      
+      // Count this slot towards our SKS requirement
+      remainingSKS--;
+      currentSlot++;
     }
     
     return true;
@@ -99,11 +112,21 @@ const DroppableScheduleGrid = ({
   const scheduleMap = new Map();
   schedules?.forEach(schedule => {
     const sks = schedule.assignments.courses.sks;
-    for (let i = 0; i < sks; i++) {
-      scheduleMap.set(
-        `${schedule.day_of_week}-${schedule.time_slot + i}`,
-        { ...schedule, slotIndex: i, totalSlots: sks }
-      );
+    let currentSlot = schedule.time_slot;
+    let sksCount = 0;
+    
+    // Map schedule slots, skipping break times
+    while (sksCount < sks) {
+      const timeSlotData = TIME_SLOTS.find(slot => slot.id === currentSlot);
+      
+      if (timeSlotData && !timeSlotData.isBreak) {
+        scheduleMap.set(
+          `${schedule.day_of_week}-${currentSlot}`,
+          { ...schedule, slotIndex: sksCount, totalSlots: sks }
+        );
+        sksCount++;
+      }
+      currentSlot++;
     }
   });
 
@@ -147,38 +170,17 @@ const DroppableScheduleGrid = ({
                 const isBreak = timeSlot.isBreak;
                 const isDroppable = canDropAt(day.id, timeSlot.id, draggedSKS || 1);
 
-                if (isBreak && !scheduleData) {
-                  // Break slot that can be droppable for multi-SKS courses
+                if (isBreak) {
                   return (
-                    <DroppableSlot
+                    <div 
                       key={`${day.id}-${timeSlot.id}`}
-                      dayId={day.id}
-                      timeSlotId={timeSlot.id}
-                      sks={draggedSKS || 1}
-                      onDrop={onDrop}
-                      isActive={isDroppable}
+                      className="p-2 bg-muted/20 rounded flex items-center justify-center"
                     >
-                      <div className={cn(
-                        "h-16 p-2 text-xs flex flex-col items-center justify-center border-2 border-dashed rounded-lg transition-all duration-300",
-                        "bg-muted/20 border-muted-foreground/20",
-                        activeId && isDroppable && "border-success bg-success/10 shadow-lg scale-105",
-                        activeId && !isDroppable && "border-destructive bg-destructive/10"
-                      )}>
-                        <Clock className="h-4 w-4 text-muted-foreground mb-1" />
-                        {activeId ? (
-                          <span className={cn(
-                            "font-medium text-center",
-                            isDroppable ? "text-success" : "text-destructive"
-                          )}>
-                            {isDroppable ? "Drop di sini" : "Tidak valid"}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground/60 text-center">
-                            Istirahat
-                          </span>
-                        )}
+                      <div className="text-center">
+                        <Clock className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+                        <span className="text-xs text-muted-foreground">Istirahat</span>
                       </div>
-                    </DroppableSlot>
+                    </div>
                   );
                 }
 
