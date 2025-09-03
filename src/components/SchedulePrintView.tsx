@@ -27,6 +27,28 @@ const SchedulePrintView = ({ classId, academicYear }: SchedulePrintViewProps) =>
     );
   };
 
+  // Create a map to track which schedules span multiple slots
+  const scheduleMap = new Map();
+  schedules?.forEach(schedule => {
+    const sks = schedule.assignments.courses.sks;
+    let currentSlot = schedule.time_slot;
+    let sksCount = 0;
+    
+    // Map schedule slots, skipping break times
+    while (sksCount < sks) {
+      const timeSlotData = TIME_SLOTS.find(slot => slot.id === currentSlot);
+      
+      if (timeSlotData && !timeSlotData.isBreak) {
+        scheduleMap.set(
+          `${schedule.day_of_week}-${currentSlot}`,
+          { ...schedule, slotIndex: sksCount, totalSlots: sks }
+        );
+        sksCount++;
+      }
+      currentSlot++;
+    }
+  });
+
   const handlePrint = () => {
     window.print();
   };
@@ -100,21 +122,32 @@ const SchedulePrintView = ({ classId, academicYear }: SchedulePrintViewProps) =>
                     )}
                   </td>
                   {DAYS.map((day) => {
-                    const schedule = getScheduleForSlot(day.id, timeSlot.id);
+                    const scheduleData = scheduleMap.get(`${day.id}-${timeSlot.id}`);
                     const isBreak = timeSlot.isBreak;
 
-                    return (
-                      <td 
-                        key={`${day.id}-${timeSlot.id}`}
-                        className={cn(
-                          "border border-gray-400 p-2 text-xs",
-                          isBreak && "bg-gray-50",
-                          schedule?.has_conflict && "bg-red-50"
-                        )}
-                      >
-                        {isBreak ? (
-                          <div className="text-center text-gray-400">-</div>
-                        ) : schedule ? (
+                    if (isBreak) {
+                      return (
+                        <td 
+                          key={`${day.id}-${timeSlot.id}`}
+                          className="border border-gray-400 p-2 text-xs bg-gray-100"
+                        >
+                          <div className="text-center font-bold text-gray-600">ISTIRAHAT</div>
+                        </td>
+                      );
+                    }
+
+                    // If there's a schedule and it's the first slot of that schedule
+                    if (scheduleData && scheduleData.slotIndex === 0) {
+                      const schedule = scheduleData;
+                      return (
+                        <td 
+                          key={`${day.id}-${timeSlot.id}`}
+                          className={cn(
+                            "border border-gray-400 p-2 text-xs",
+                            schedule.has_conflict && "bg-red-50"
+                          )}
+                          rowSpan={schedule.totalSlots}
+                        >
                           <div className="space-y-1">
                             <div className="font-semibold text-xs">
                               {schedule.assignments.courses.name}
@@ -131,9 +164,22 @@ const SchedulePrintView = ({ classId, academicYear }: SchedulePrintViewProps) =>
                               </div>
                             )}
                           </div>
-                        ) : (
-                          <div className="text-center text-gray-400">-</div>
-                        )}
+                        </td>
+                      );
+                    }
+
+                    // If there's a schedule but it's not the first slot, don't render (handled by rowspan)
+                    if (scheduleData && scheduleData.slotIndex > 0) {
+                      return null;
+                    }
+
+                    // Empty slot
+                    return (
+                      <td 
+                        key={`${day.id}-${timeSlot.id}`}
+                        className="border border-gray-400 p-2 text-xs"
+                      >
+                        <div className="text-center text-gray-400">-</div>
                       </td>
                     );
                   })}
