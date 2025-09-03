@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DndContext, DragOverlay, DragStartEvent, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,6 +32,13 @@ const SchedulePage = () => {
   const createSchedule = useCreateSchedule();
   const checkConflicts = useCheckScheduleConflicts();
   const { toast } = useToast();
+
+  // Set default academic year when currentAcademicYear loads
+  useEffect(() => {
+    if (currentAcademicYear?.value && !selectedAcademicYear) {
+      setSelectedAcademicYear(currentAcademicYear.value);
+    }
+  }, [currentAcademicYear?.value, selectedAcademicYear]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
