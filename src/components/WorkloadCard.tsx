@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import StatusBadge from "./StatusBadge";
-import { User, BookOpen, Award } from "lucide-react";
+import { User, BookOpen, Award, Users, GraduationCap } from "lucide-react";
 
 interface WorkloadCardProps {
   lecturer: {
@@ -17,6 +17,8 @@ interface WorkloadCardProps {
       name: string;
       sks: number;
       sharedWith: number;
+      className?: string;
+      classId?: string;
     }>;
   };
 }
@@ -32,6 +34,12 @@ const WorkloadCard = ({ lecturer }: WorkloadCardProps) => {
   };
 
   const status = getWorkloadStatus(lecturer.totalWorkload);
+
+  // Calculate course and class counts
+  const uniqueCourses = new Set(lecturer.courses?.map(course => course.id) || []);
+  const uniqueClasses = new Set(lecturer.courses?.map(course => course.classId).filter(Boolean) || []);
+  const courseCount = uniqueCourses.size;
+  const classCount = uniqueClasses.size;
 
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 shadow-card hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -78,6 +86,25 @@ const WorkloadCard = ({ lecturer }: WorkloadCardProps) => {
             <div>
               <p className="text-xs text-muted-foreground">SKS Jabatan</p>
               <p className="font-semibold">{lecturer.structuralSKS}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Course and Class Count */}
+        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
+          <div className="flex items-center space-x-2">
+            <GraduationCap className="h-4 w-4 text-green-500" />
+            <div>
+              <p className="text-xs text-muted-foreground">Mata Kuliah</p>
+              <p className="font-semibold">{courseCount} MK</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Users className="h-4 w-4 text-purple-500" />
+            <div>
+              <p className="text-xs text-muted-foreground">Kelas Diajar</p>
+              <p className="font-semibold">{classCount} Kelas</p>
             </div>
           </div>
         </div>
