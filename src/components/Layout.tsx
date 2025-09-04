@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User, Calendar } from "lucide-react";
+import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User, Calendar, School } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -26,6 +26,7 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
 
   const navigation = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "programs", label: "Program Studi", icon: School },
     { id: "lecturers", label: "Data Dosen", icon: Users },
     { id: "courses", label: "Data Mata Kuliah", icon: BookOpen },
     { id: "assignments", label: "Plotting Dosen", icon: GraduationCap },
@@ -108,7 +109,7 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm font-medium">Sistem Plotting Beban Mengajar</p>
-                <p className="text-xs text-muted-foreground">Program Studi Diploma 3</p>
+                <p className="text-xs text-muted-foreground">Multi Program Studi</p>
               </div>
               {user ? (
                 <div className="flex items-center space-x-2">

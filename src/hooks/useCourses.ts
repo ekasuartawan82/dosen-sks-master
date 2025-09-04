@@ -16,17 +16,18 @@ export interface Course {
   }>;
 }
 
-export const useCourses = () => {
+export const useCourses = (programId?: string) => {
   return useQuery({
-    queryKey: ['courses'],
+    queryKey: ['courses', programId],
     queryFn: async (): Promise<Course[]> => {
-      const { data: courses, error } = await supabase
+      let coursesQuery = supabase
         .from('courses')
         .select(`
           id,
           name,
           sks,
           level,
+          program_id,
           created_at,
           updated_at,
           assignments (
@@ -41,6 +42,13 @@ export const useCourses = () => {
           )
         `)
         .order('name');
+
+      // Filter by program if specified
+      if (programId && programId !== 'all') {
+        coursesQuery = coursesQuery.eq('program_id', programId);
+      }
+
+      const { data: courses, error } = await coursesQuery;
 
       if (error) throw error;
 

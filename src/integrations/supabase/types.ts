@@ -66,6 +66,7 @@ export type Database = {
           id: string
           level: number
           name: string
+          program_id: string | null
           updated_at: string
         }
         Insert: {
@@ -73,6 +74,7 @@ export type Database = {
           id?: string
           level: number
           name: string
+          program_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -80,9 +82,18 @@ export type Database = {
           id?: string
           level?: number
           name?: string
+          program_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "classes_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       courses: {
         Row: {
@@ -90,6 +101,7 @@ export type Database = {
           id: string
           level: number
           name: string
+          program_id: string | null
           sks: number
           updated_at: string
         }
@@ -98,6 +110,7 @@ export type Database = {
           id?: string
           level: number
           name: string
+          program_id?: string | null
           sks: number
           updated_at?: string
         }
@@ -106,10 +119,19 @@ export type Database = {
           id?: string
           level?: number
           name?: string
+          program_id?: string | null
           sks?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "courses_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lecturers: {
         Row: {
@@ -212,6 +234,33 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      programs: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
           updated_at?: string
         }
         Relationships: []
