@@ -10,12 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCourses } from "@/hooks/useCourses";
 import CourseForm from "./forms/CourseForm";
+import ProgramFilter from "./ProgramFilter";
 
 const CoursesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProgram, setSelectedProgram] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
-  const { data: courses, isLoading } = useCourses();
+  const { data: courses, isLoading } = useCourses(selectedProgram);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -87,21 +89,43 @@ const CoursesPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Data Mata Kuliah</h1>
-        <Button className="gap-2" onClick={() => setShowForm(true)}>
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+            Data Mata Kuliah
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Kelola data mata kuliah per program studi
+          </p>
+        </div>
+        <Button 
+          onClick={() => setShowForm(true)}
+          className="bg-gradient-to-r from-primary to-primary-glow hover:opacity-90 transition-opacity gap-2"
+        >
           <Plus className="h-4 w-4" />
           Tambah Mata Kuliah
         </Button>
       </div>
 
-      <div className="flex items-center space-x-2 max-w-md">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Cari mata kuliah..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      {/* Filters */}
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+        <div className="flex items-center space-x-2 max-w-md">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari mata kuliah..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">Program:</span>
+          <ProgramFilter 
+            selectedProgram={selectedProgram}
+            onProgramChange={setSelectedProgram}
+            className="w-64"
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

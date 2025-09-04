@@ -30,12 +30,12 @@ const getStructuralSKS = (position: string): number => {
   }
 };
 
-export const useLecturers = () => {
+export const useLecturers = (programId?: string) => {
   return useQuery({
-    queryKey: ['lecturers'],
+    queryKey: ['lecturers', programId],
     queryFn: async (): Promise<LecturerWithWorkload[]> => {
-      // Fetch lecturers with their course assignments
-      const { data: lecturers, error } = await supabase
+      // Build the query for lecturers with their course assignments
+      let lecturerQuery = supabase
         .from('lecturers')
         .select(`
           id,
@@ -48,26 +48,33 @@ export const useLecturers = () => {
             courses (
               id,
               name,
-              sks
+              sks,
+              program_id
             ),
             classes (
               id,
-              name
+              name,
+              program_id
             )
           )
         `);
+
+      const { data: lecturers, error } = await lecturerQuery;
 
       if (error) throw error;
 
       // Get course assignment counts for team teaching calculation (per class)
       // Only count functional lecturers for team teaching
-      const { data: courseCounts, error: countsError } = await supabase
+      let countsQuery = supabase
         .from('assignments')
         .select(`
           course_id, 
           class_id,
-          lecturers!inner(status)
+          lecturers!inner(status),
+          courses!inner(program_id)
         `);
+
+      const { data: courseCounts, error: countsError } = await countsQuery;
 
       if (countsError) throw countsError;
 
@@ -86,42 +93,50 @@ export const useLecturers = () => {
         const structuralSKS = getStructuralSKS(lecturer.structural_position);
         
         let teachingSKS = 0;
-        const courses = lecturer.assignments.map(assignment => {
-          const course = assignment.courses;
-          const classInfo = assignment.classes;
-          const key = `${course.id}-${assignment.class_id || 'no-class'}`;
-          
-          let sksShare: number;
-          let sharedWith: number;
-          
-          if (lecturer.status === 'Fungsional') {
-            // For functional lecturers, divide SKS among functional lecturers only
-            sharedWith = courseAssignmentCounts[key] || 1;
-            sksShare = course.sks / sharedWith;
-          } else {
-            // For non-functional and practitioner lecturers, don't count in team teaching
-            // They get 0 SKS if there are functional lecturers teaching the same course
-            const functionalCount = courseAssignmentCounts[key] || 0;
-            if (functionalCount > 0) {
-              sksShare = 0; // Non-functional/practitioner doesn't get SKS if functional lecturer exists
-              sharedWith = functionalCount;
+        const courses = lecturer.assignments
+          .filter(assignment => {
+            // Filter assignments based on program if specified
+            if (!programId || programId === 'all') return true;
+            const course = assignment.courses;
+            const classInfo = assignment.classes;
+            return course?.program_id === programId || classInfo?.program_id === programId;
+          })
+          .map(assignment => {
+            const course = assignment.courses;
+            const classInfo = assignment.classes;
+            const key = `${course.id}-${assignment.class_id || 'no-class'}`;
+            
+            let sksShare: number;
+            let sharedWith: number;
+            
+            if (lecturer.status === 'Fungsional') {
+              // For functional lecturers, divide SKS among functional lecturers only
+              sharedWith = courseAssignmentCounts[key] || 1;
+              sksShare = course.sks / sharedWith;
             } else {
-              sksShare = course.sks; // Only gets full SKS if no functional lecturer
-              sharedWith = 1;
+              // For non-functional and practitioner lecturers, don't count in team teaching
+              // They get 0 SKS if there are functional lecturers teaching the same course
+              const functionalCount = courseAssignmentCounts[key] || 0;
+              if (functionalCount > 0) {
+                sksShare = 0; // Non-functional/practitioner doesn't get SKS if functional lecturer exists
+                sharedWith = functionalCount;
+              } else {
+                sksShare = course.sks; // Only gets full SKS if no functional lecturer
+                sharedWith = 1;
+              }
             }
-          }
-          
-          teachingSKS += sksShare;
-          
-          return {
-            id: course.id,
-            name: course.name,
-            sks: course.sks,
-            sharedWith,
-            className: classInfo?.name,
-            classId: classInfo?.id
-          };
-        });
+            
+            teachingSKS += sksShare;
+            
+            return {
+              id: course.id,
+              name: course.name,
+              sks: course.sks,
+              sharedWith,
+              className: classInfo?.name,
+              classId: classInfo?.id
+            };
+          });
 
         const totalWorkload = Math.round((teachingSKS + structuralSKS) * 100) / 100;
         
