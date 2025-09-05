@@ -138,6 +138,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          program_id: string | null
           status: Database["public"]["Enums"]["lecturer_status"]
           structural_position: Database["public"]["Enums"]["structural_position"]
           updated_at: string
@@ -146,6 +147,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          program_id?: string | null
           status: Database["public"]["Enums"]["lecturer_status"]
           structural_position?: Database["public"]["Enums"]["structural_position"]
           updated_at?: string
@@ -154,11 +156,20 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          program_id?: string | null
           status?: Database["public"]["Enums"]["lecturer_status"]
           structural_position?: Database["public"]["Enums"]["structural_position"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lecturers_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       posts: {
         Row: {

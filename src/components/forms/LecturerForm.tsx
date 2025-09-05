@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePrograms } from "@/hooks/usePrograms";
 import type { Database } from "@/integrations/supabase/types";
 
 type LecturerStatus = Database["public"]["Enums"]["lecturer_status"];
@@ -20,6 +21,7 @@ interface LecturerFormProps {
     name: string;
     status: LecturerStatus;
     structural_position: StructuralPosition;
+    program_id?: string;
   };
 }
 
@@ -27,14 +29,16 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
   const [name, setName] = useState(lecturer?.name || "");
   const [status, setStatus] = useState<LecturerStatus | "">(lecturer?.status || "");
   const [structuralPosition, setStructuralPosition] = useState<StructuralPosition>(lecturer?.structural_position || "Tidak Ada");
+  const [programId, setProgramId] = useState(lecturer?.program_id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: programs = [] } = usePrograms();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !status) return;
+    if (!name.trim() || !status || !programId) return;
 
     setIsSubmitting(true);
     try {
@@ -46,6 +50,7 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
             name: name.trim(),
             status: status as LecturerStatus,
             structural_position: structuralPosition,
+            program_id: programId,
             updated_at: new Date().toISOString()
           })
           .eq('id', lecturer.id);
@@ -59,7 +64,8 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
           .insert({
             name: name.trim(),
             status: status as LecturerStatus,
-            structural_position: structuralPosition
+            structural_position: structuralPosition,
+            program_id: programId
           });
 
         if (error) throw error;
@@ -73,6 +79,7 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
       setName("");
       setStatus("");
       setStructuralPosition("Tidak Ada");
+      setProgramId("");
     } catch (error) {
       console.error('Error saving lecturer:', error);
       toast({
@@ -137,11 +144,27 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label>Program Studi</Label>
+            <Select value={programId} onValueChange={setProgramId} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih Program Studi" />
+              </SelectTrigger>
+              <SelectContent>
+                {programs.map((program) => (
+                  <SelectItem key={program.id} value={program.id}>
+                    {program.name} ({program.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button type="submit" disabled={isSubmitting || !name.trim() || !status}>
+            <Button type="submit" disabled={isSubmitting || !name.trim() || !status || !programId}>
               {isSubmitting ? "Menyimpan..." : lecturer ? "Perbarui" : "Simpan"}
             </Button>
           </DialogFooter>
