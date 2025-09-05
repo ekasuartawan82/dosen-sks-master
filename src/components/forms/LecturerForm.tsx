@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,15 +26,31 @@ interface LecturerFormProps {
 }
 
 const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
-  const [name, setName] = useState(lecturer?.name || "");
-  const [status, setStatus] = useState<LecturerStatus | "">(lecturer?.status || "");
-  const [structuralPosition, setStructuralPosition] = useState<StructuralPosition>(lecturer?.structural_position || "Tidak Ada");
-  const [programId, setProgramId] = useState(lecturer?.program_id || "");
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState<LecturerStatus | "">("");
+  const [structuralPosition, setStructuralPosition] = useState<StructuralPosition>("Tidak Ada");
+  const [programId, setProgramId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: programs = [] } = usePrograms();
+
+  // Update form data when lecturer prop changes
+  useEffect(() => {
+    if (lecturer) {
+      setName(lecturer.name || "");
+      setStatus(lecturer.status || "");
+      setStructuralPosition(lecturer.structural_position || "Tidak Ada");
+      setProgramId(lecturer.program_id || "");
+    } else {
+      // Reset form for new lecturer
+      setName("");
+      setStatus("");
+      setStructuralPosition("Tidak Ada");
+      setProgramId("");
+    }
+  }, [lecturer]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
