@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePrograms } from "@/hooks/usePrograms";
 
 interface CourseFormProps {
   open: boolean;
@@ -15,6 +17,7 @@ interface CourseFormProps {
     name: string;
     sks: number;
     level: number;
+    program_id?: string;
   };
 }
 
@@ -22,14 +25,16 @@ const CourseForm = ({ open, onOpenChange, course }: CourseFormProps) => {
   const [name, setName] = useState(course?.name || "");
   const [sks, setSks] = useState(course?.sks?.toString() || "");
   const [level, setLevel] = useState(course?.level?.toString() || "");
+  const [programId, setProgramId] = useState(course?.program_id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: programs = [] } = usePrograms();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !sks || !level) return;
+    if (!name.trim() || !sks || !level || !programId) return;
 
     const sksNum = parseInt(sks);
     const levelNum = parseInt(level);
@@ -53,6 +58,7 @@ const CourseForm = ({ open, onOpenChange, course }: CourseFormProps) => {
             name: name.trim(),
             sks: sksNum,
             level: levelNum,
+            program_id: programId,
             updated_at: new Date().toISOString()
           })
           .eq('id', course.id);
@@ -66,7 +72,8 @@ const CourseForm = ({ open, onOpenChange, course }: CourseFormProps) => {
           .insert({
             name: name.trim(),
             sks: sksNum,
-            level: levelNum
+            level: levelNum,
+            program_id: programId
           });
 
         if (error) throw error;
@@ -81,6 +88,7 @@ const CourseForm = ({ open, onOpenChange, course }: CourseFormProps) => {
       setName("");
       setSks("");
       setLevel("");
+      setProgramId("");
     } catch (error) {
       console.error('Error saving course:', error);
       toast({
@@ -141,11 +149,27 @@ const CourseForm = ({ open, onOpenChange, course }: CourseFormProps) => {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>Program Studi</Label>
+            <Select value={programId} onValueChange={setProgramId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih Program Studi" />
+              </SelectTrigger>
+              <SelectContent>
+                {programs.map((program) => (
+                  <SelectItem key={program.id} value={program.id}>
+                    {program.name} ({program.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button type="submit" disabled={isSubmitting || !name.trim() || !sks || !level}>
+            <Button type="submit" disabled={isSubmitting || !name.trim() || !sks || !level || !programId}>
               {isSubmitting ? "Menyimpan..." : course ? "Perbarui" : "Simpan"}
             </Button>
           </DialogFooter>

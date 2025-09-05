@@ -42,6 +42,7 @@ export const useLecturers = (programId?: string) => {
           name,
           status,
           structural_position,
+          program_id,
           assignments (
             course_id,
             class_id,
@@ -58,6 +59,11 @@ export const useLecturers = (programId?: string) => {
             )
           )
         `);
+
+      // Filter by program if specified
+      if (programId && programId !== 'all') {
+        lecturerQuery = lecturerQuery.eq('program_id', programId);
+      }
 
       const { data: lecturers, error } = await lecturerQuery;
 
