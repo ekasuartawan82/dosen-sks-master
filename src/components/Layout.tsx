@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User, Calendar, School } from "lucide-react";
+import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User, Calendar, School, UserCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "programs", label: "Program Studi", icon: School },
     { id: "lecturers", label: "Data Dosen", icon: Users },
+    { id: "teaching-staff", label: "Tenaga Pengajar PT", icon: UserCheck },
     { id: "courses", label: "Data Mata Kuliah", icon: BookOpen },
     { id: "assignments", label: "Plotting Dosen", icon: GraduationCap },
     { id: "schedules", label: "Ploting Jadwal", icon: Calendar },

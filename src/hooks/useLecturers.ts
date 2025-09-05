@@ -60,10 +60,13 @@ export const useLecturers = (programId?: string) => {
           )
         `);
 
-      // Filter by program if specified
+      // Filter by program if specified and only show functional lecturers
       if (programId && programId !== 'all') {
         lecturerQuery = lecturerQuery.eq('program_id', programId);
       }
+      
+      // Only show functional lecturers in the regular lecturers page
+      lecturerQuery = lecturerQuery.eq('status', 'Fungsional');
 
       const { data: lecturers, error } = await lecturerQuery;
 
