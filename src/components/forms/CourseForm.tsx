@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,15 +22,31 @@ interface CourseFormProps {
 }
 
 const CourseForm = ({ open, onOpenChange, course }: CourseFormProps) => {
-  const [name, setName] = useState(course?.name || "");
-  const [sks, setSks] = useState(course?.sks?.toString() || "");
-  const [level, setLevel] = useState(course?.level?.toString() || "");
-  const [programId, setProgramId] = useState(course?.program_id || "");
+  const [name, setName] = useState("");
+  const [sks, setSks] = useState("");
+  const [level, setLevel] = useState("");
+  const [programId, setProgramId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: programs = [] } = usePrograms();
+
+  // Update form data when course prop changes
+  useEffect(() => {
+    if (course) {
+      setName(course.name || "");
+      setSks(course.sks?.toString() || "");
+      setLevel(course.level?.toString() || "");
+      setProgramId(course.program_id || "");
+    } else {
+      // Reset form for new course
+      setName("");
+      setSks("");
+      setLevel("");
+      setProgramId("");
+    }
+  }, [course]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

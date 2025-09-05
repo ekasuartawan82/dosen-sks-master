@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,31 @@ interface ProgramFormProps {
 
 const ProgramForm = ({ program, onClose }: ProgramFormProps) => {
   const [formData, setFormData] = useState({
-    name: program?.name || "",
-    code: program?.code || "",
-    description: program?.description || ""
+    name: "",
+    code: "",
+    description: ""
   });
 
   const createProgram = useCreateProgram();
   const updateProgram = useUpdateProgram();
+
+  // Update form data when program prop changes
+  useEffect(() => {
+    if (program) {
+      setFormData({
+        name: program.name || "",
+        code: program.code || "",
+        description: program.description || ""
+      });
+    } else {
+      // Reset form for new program
+      setFormData({
+        name: "",
+        code: "",
+        description: ""
+      });
+    }
+  }, [program]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
