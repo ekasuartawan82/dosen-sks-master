@@ -11,13 +11,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCourses } from "@/hooks/useCourses";
 import CourseForm from "./forms/CourseForm";
 import ProgramFilter from "./ProgramFilter";
+import LevelFilter from "./LevelFilter";
+import ClassFilter from "./ClassFilter";
 
 const CoursesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProgram, setSelectedProgram] = useState<string>("all");
+  const [selectedLevel, setSelectedLevel] = useState<string>("all");
+  const [selectedClass, setSelectedClass] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<any>(null);
-  const { data: courses, isLoading } = useCourses(selectedProgram);
+  const { data: courses, isLoading } = useCourses(selectedProgram, selectedLevel, selectedClass);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -108,7 +112,7 @@ const CoursesPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+      <div className="flex flex-col space-y-4">
         <div className="flex items-center space-x-2 max-w-md">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
@@ -118,13 +122,40 @@ const CoursesPage = () => {
           />
         </div>
         
-        <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium">Program:</span>
-          <ProgramFilter 
-            selectedProgram={selectedProgram}
-            onProgramChange={setSelectedProgram}
-            className="w-64"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Program:</span>
+            <ProgramFilter 
+              selectedProgram={selectedProgram}
+              onProgramChange={(value) => {
+                setSelectedProgram(value);
+                setSelectedClass("all"); // Reset class when program changes
+              }}
+              className="flex-1"
+            />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Tingkat:</span>
+            <LevelFilter 
+              selectedLevel={selectedLevel}
+              onLevelChange={(value) => {
+                setSelectedLevel(value);
+                setSelectedClass("all"); // Reset class when level changes
+              }}
+              className="flex-1"
+            />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Kelas:</span>
+            <ClassFilter 
+              selectedClass={selectedClass}
+              onClassChange={setSelectedClass}
+              selectedLevel={selectedLevel}
+              className="flex-1"
+            />
+          </div>
         </div>
       </div>
 
@@ -185,9 +216,14 @@ const CoursesPage = () => {
                 <div>
                   <h4 className="font-medium mb-2 text-sm">Dosen Pengampu:</h4>
                   <div className="space-y-1">
-                    {course.assignedLecturers.map((lecturer) => (
-                      <div key={lecturer.id} className="text-sm text-muted-foreground">
+                    {course.assignedLecturers.map((lecturer, index) => (
+                      <div key={`${lecturer.id}-${index}`} className="text-sm text-muted-foreground">
                         {lecturer.name}
+                        {lecturer.className && (
+                          <span className="ml-2 text-xs bg-muted px-2 py-1 rounded">
+                            {lecturer.className}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>

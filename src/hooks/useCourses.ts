@@ -16,9 +16,9 @@ export interface Course {
   }>;
 }
 
-export const useCourses = (programId?: string) => {
+export const useCourses = (programId?: string, level?: string, classId?: string) => {
   return useQuery({
-    queryKey: ['courses', programId],
+    queryKey: ['courses', programId, level, classId],
     queryFn: async (): Promise<Course[]> => {
       let coursesQuery = supabase
         .from('courses')
@@ -48,11 +48,16 @@ export const useCourses = (programId?: string) => {
         coursesQuery = coursesQuery.eq('program_id', programId);
       }
 
+      // Filter by level if specified
+      if (level && level !== 'all') {
+        coursesQuery = coursesQuery.eq('level', parseInt(level));
+      }
+
       const { data: courses, error } = await coursesQuery;
 
       if (error) throw error;
 
-      return courses.map(course => ({
+      let filteredCourses = courses.map(course => ({
         ...course,
         assignedLecturers: course.assignments.map(assignment => ({
           ...(assignment.lecturers || {}),
@@ -63,6 +68,15 @@ export const useCourses = (programId?: string) => {
           name: assignment.lecturers?.name || null
         }))
       }));
+
+      // Filter by class if specified (needs to be done after data mapping)
+      if (classId && classId !== 'all') {
+        filteredCourses = filteredCourses.filter(course => 
+          course.assignedLecturers.some(lecturer => lecturer.classId === classId)
+        );
+      }
+
+      return filteredCourses;
     }
   });
 };
