@@ -12,15 +12,18 @@ import { useCourses } from "@/hooks/useCourses";
 import { useLecturers } from "@/hooks/useLecturers";
 import { useClasses } from "@/hooks/useClasses";
 import StatusBadge from "@/components/StatusBadge";
+import ProgramFilter from "../ProgramFilter";
 
 interface AssignmentFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  selectedProgram?: string;
   selectedLevel?: string;
   selectedClass?: string;
 }
 
-const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass = "" }: AssignmentFormProps) => {
+const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedLevel = "all", selectedClass = "all" }: AssignmentFormProps) => {
+  const [formProgram, setFormProgram] = useState(selectedProgram);
   const [formLevel, setFormLevel] = useState(selectedLevel);
   const [formClass, setFormClass] = useState(selectedClass);
   const [selectedCourse, setSelectedCourse] = useState("");
@@ -29,28 +32,27 @@ const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass 
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: courses } = useCourses();
-  const { data: lecturers } = useLecturers();
+  const { data: courses } = useCourses(formProgram, formLevel);
+  const { data: lecturers } = useLecturers(formProgram);
   const { data: allClasses } = useClasses();
 
-  // Filter courses by selected level
-  const availableCourses = courses?.filter(course => 
-    !formLevel || course.level.toString() === formLevel
-  ) || [];
+  // Courses are already filtered by the hook
+  const availableCourses = courses || [];
 
   // Filter classes by selected level
   const availableClasses = allClasses?.filter(cls => 
-    !formLevel || cls.level.toString() === formLevel
+    !formLevel || formLevel === "all" || cls.level.toString() === formLevel
   ) || [];
 
   useEffect(() => {
     if (open) {
+      setFormProgram(selectedProgram);
       setFormLevel(selectedLevel);
       setFormClass(selectedClass);
       setSelectedCourse("");
       setSelectedLecturers([]);
     }
-  }, [open, selectedLevel, selectedClass]);
+  }, [open, selectedProgram, selectedLevel, selectedClass]);
 
   const handleLecturerToggle = (lecturerId: string) => {
     setSelectedLecturers(prev => 
@@ -143,6 +145,15 @@ const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass 
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Program Selection */}
+          <div className="space-y-2">
+            <Label>Program Studi</Label>
+            <ProgramFilter
+              selectedProgram={formProgram}
+              onProgramChange={setFormProgram}
+            />
+          </div>
+
           {/* Level Selection */}
           <div className="space-y-2">
             <Label>Tingkat</Label>
@@ -151,6 +162,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass 
                 <SelectValue placeholder="Pilih tingkat" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Semua Tingkat</SelectItem>
                 <SelectItem value="1">Tingkat 1</SelectItem>
                 <SelectItem value="2">Tingkat 2</SelectItem>
                 <SelectItem value="3">Tingkat 3</SelectItem>
@@ -159,7 +171,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass 
           </div>
 
           {/* Class Selection */}
-          {formLevel && (
+          {formLevel && formLevel !== "all" && (
             <div className="space-y-2">
               <Label>Kelas</Label>
               <Select value={formClass} onValueChange={setFormClass}>
@@ -167,6 +179,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass 
                   <SelectValue placeholder="Pilih kelas" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">Semua Kelas</SelectItem>
                   {availableClasses.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
@@ -178,7 +191,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedLevel = "", selectedClass 
           )}
 
           {/* Course Selection */}
-          {formLevel && formClass && (
+          {formProgram && formProgram !== "all" && formLevel && formLevel !== "all" && formClass && formClass !== "all" && (
             <div className="space-y-2">
               <Label>Mata Kuliah</Label>
               <Select value={selectedCourse} onValueChange={setSelectedCourse}>

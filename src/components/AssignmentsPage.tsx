@@ -15,15 +15,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import AssignmentForm from "./forms/AssignmentForm";
 import { ClassForm } from "./forms/ClassForm";
+import ProgramFilter from "./ProgramFilter";
+import LevelFilter from "./LevelFilter";
+import ClassFilter from "./ClassFilter";
 
 const AssignmentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState<string>("");
-  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedProgram, setSelectedProgram] = useState<string>("all");
+  const [selectedLevel, setSelectedLevel] = useState<string>("all");
+  const [selectedClass, setSelectedClass] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
   const [showClassForm, setShowClassForm] = useState(false);
   const { data: lecturers, isLoading: loadingLecturers } = useLecturers();
-  const { data: courses, isLoading: loadingCourses } = useCourses();
+  const { data: courses, isLoading: loadingCourses } = useCourses(selectedProgram, selectedLevel, selectedClass);
   const { data: allClasses, isLoading: loadingClasses } = useClasses();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -33,10 +37,8 @@ const AssignmentsPage = () => {
     !selectedLevel || selectedLevel === "all" || cls.level.toString() === selectedLevel
   ) || [];
 
-  // Get courses for selected level
-  const availableCourses = courses?.filter(course => 
-    !selectedLevel || selectedLevel === "all" || course.level.toString() === selectedLevel
-  ) || [];
+  // Courses are already filtered by the hook
+  const availableCourses = courses || [];
 
   // Combine courses and lecturers to create assignments
   const assignments = availableCourses?.map(course => {
@@ -145,48 +147,37 @@ const AssignmentsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 items-center">
-        <div className="flex-1">
-          <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Pilih Tingkat" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Tingkat</SelectItem>
-              <SelectItem value="1">Tingkat 1</SelectItem>
-              <SelectItem value="2">Tingkat 2</SelectItem>
-              <SelectItem value="3">Tingkat 3</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ProgramFilter
+          selectedProgram={selectedProgram}
+          onProgramChange={setSelectedProgram}
+          className="w-full"
+        />
         
-        {selectedLevel && (
-          <div className="flex-1 flex gap-2 items-center">
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Pilih Kelas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kelas</SelectItem>
-                {availableClasses.map((cls) => (
-                  <SelectItem key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedLevel !== "all" && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowClassForm(true)}
-                title="Tambah kelas untuk tingkat ini"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        )}
+        <LevelFilter
+          selectedLevel={selectedLevel}
+          onLevelChange={setSelectedLevel}
+          className="w-full"
+        />
+        
+        <div className="flex gap-2 items-center">
+          <ClassFilter
+            selectedClass={selectedClass}
+            onClassChange={setSelectedClass}
+            selectedLevel={selectedLevel}
+            className="flex-1"
+          />
+          {selectedLevel !== "all" && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowClassForm(true)}
+              title="Tambah kelas untuk tingkat ini"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="relative">
@@ -302,6 +293,7 @@ const AssignmentsPage = () => {
       <AssignmentForm
         open={showForm}
         onOpenChange={setShowForm}
+        selectedProgram={selectedProgram}
         selectedLevel={selectedLevel}
         selectedClass={selectedClass}
       />
