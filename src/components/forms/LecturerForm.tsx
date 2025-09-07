@@ -30,6 +30,7 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
   const [status, setStatus] = useState<LecturerStatus | "">("");
   const [structuralPosition, setStructuralPosition] = useState<StructuralPosition>("Tidak Ada");
   const [programId, setProgramId] = useState("");
+  const [lecturerType, setLecturerType] = useState("program_studi"); // "program_studi" or "tenaga_pengajar"
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
@@ -43,18 +44,20 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
       setStatus(lecturer.status || "");
       setStructuralPosition(lecturer.structural_position || "Tidak Ada");
       setProgramId(lecturer.program_id || "");
+      setLecturerType(lecturer.program_id ? "program_studi" : "tenaga_pengajar");
     } else {
       // Reset form for new lecturer
       setName("");
       setStatus("");
       setStructuralPosition("Tidak Ada");
       setProgramId("");
+      setLecturerType("program_studi");
     }
   }, [lecturer]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !status || !programId) return;
+    if (!name.trim() || !status || (lecturerType === "program_studi" && !programId)) return;
 
     setIsSubmitting(true);
     try {
@@ -66,7 +69,7 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
             name: name.trim(),
             status: status as LecturerStatus,
             structural_position: structuralPosition,
-            program_id: programId,
+            program_id: lecturerType === "program_studi" ? programId : null,
             updated_at: new Date().toISOString()
           })
           .eq('id', lecturer.id);
@@ -81,7 +84,7 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
             name: name.trim(),
             status: status as LecturerStatus,
             structural_position: structuralPosition,
-            program_id: programId
+            program_id: lecturerType === "program_studi" ? programId : null
           });
 
         if (error) throw error;
@@ -96,6 +99,7 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
       setStatus("");
       setStructuralPosition("Tidak Ada");
       setProgramId("");
+      setLecturerType("program_studi");
     } catch (error) {
       console.error('Error saving lecturer:', error);
       toast({
@@ -161,26 +165,41 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label>Program Studi</Label>
-            <Select value={programId} onValueChange={setProgramId} required>
+            <Label>Tipe Pengajar</Label>
+            <Select value={lecturerType} onValueChange={setLecturerType}>
               <SelectTrigger>
-                <SelectValue placeholder="Pilih Program Studi" />
+                <SelectValue placeholder="Pilih Tipe Pengajar" />
               </SelectTrigger>
               <SelectContent>
-                {programs.map((program) => (
-                  <SelectItem key={program.id} value={program.id}>
-                    {program.name} ({program.code})
-                  </SelectItem>
-                ))}
+                <SelectItem value="program_studi">Dosen Program Studi</SelectItem>
+                <SelectItem value="tenaga_pengajar">Tenaga Pengajar PT</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {lecturerType === "program_studi" && (
+            <div className="space-y-2">
+              <Label>Program Studi</Label>
+              <Select value={programId} onValueChange={setProgramId} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Program Studi" />
+                </SelectTrigger>
+                <SelectContent>
+                  {programs.map((program) => (
+                    <SelectItem key={program.id} value={program.id}>
+                      {program.name} ({program.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Batal
             </Button>
-            <Button type="submit" disabled={isSubmitting || !name.trim() || !status || !programId}>
+            <Button type="submit" disabled={isSubmitting || !name.trim() || !status || (lecturerType === "program_studi" && !programId)}>
               {isSubmitting ? "Menyimpan..." : lecturer ? "Perbarui" : "Simpan"}
             </Button>
           </DialogFooter>

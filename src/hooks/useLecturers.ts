@@ -6,6 +6,7 @@ export interface LecturerWithWorkload {
   name: string;
   status: "sufficient" | "insufficient" | "excess";
   structuralPosition: string;
+  programId?: string; // Added programId to interface
   teachingSKS: number;
   structuralSKS: number;
   totalWorkload: number;
@@ -30,9 +31,9 @@ const getStructuralSKS = (position: string): number => {
   }
 };
 
-export const useLecturers = (programId?: string) => {
+export const useLecturers = (programId?: string, includeTeachingStaff: boolean = false) => {
   return useQuery({
-    queryKey: ['lecturers', programId],
+    queryKey: ['lecturers', programId, includeTeachingStaff],
     queryFn: async (): Promise<LecturerWithWorkload[]> => {
       // Build the query for lecturers with their course assignments
       let lecturerQuery = supabase
@@ -60,13 +61,16 @@ export const useLecturers = (programId?: string) => {
           )
         `);
 
-      // Filter by program if specified and only show functional lecturers
+      // Filter by program if specified 
       if (programId && programId !== 'all') {
         lecturerQuery = lecturerQuery.eq('program_id', programId);
       }
       
-      // Only show functional lecturers in the regular lecturers page
-      lecturerQuery = lecturerQuery.eq('status', 'Fungsional');
+      // Filter by lecturer type - if includeTeachingStaff is true, include all lecturers
+      // Otherwise, only show functional lecturers from programs
+      if (!includeTeachingStaff) {
+        lecturerQuery = lecturerQuery.eq('status', 'Fungsional');
+      }
 
       const { data: lecturers, error } = await lecturerQuery;
 
@@ -164,6 +168,7 @@ export const useLecturers = (programId?: string) => {
           name: lecturer.name,
           status,
           structuralPosition: lecturer.structural_position,
+          programId: lecturer.program_id, // Include programId in the response
           teachingSKS: Math.round(teachingSKS * 100) / 100, // Round to 2 decimal places
           structuralSKS,
           totalWorkload,

@@ -28,12 +28,14 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
   const [formClass, setFormClass] = useState(selectedClass);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedLecturers, setSelectedLecturers] = useState<string[]>([]);
+  const [lecturerType, setLecturerType] = useState("program_studi"); // "program_studi" or "tenaga_pengajar"
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: courses } = useCourses(formProgram, formLevel);
-  const { data: lecturers } = useLecturers(formProgram);
+  const { data: programLecturers } = useLecturers(formProgram);
+  const { data: teachingStaff } = useLecturers(undefined, true); // Get all lecturers including teaching staff
   const { data: allClasses } = useClasses();
 
   // Courses are already filtered by the hook
@@ -51,6 +53,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
       setFormClass(selectedClass);
       setSelectedCourse("");
       setSelectedLecturers([]);
+      setLecturerType("program_studi");
     }
   }, [open, selectedProgram, selectedLevel, selectedClass]);
 
@@ -107,6 +110,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
       // Reset form and close dialog
       setSelectedCourse("");
       setSelectedLecturers([]);
+      setLecturerType("program_studi");
       onOpenChange(false);
 
       // Invalidate queries to refresh data
@@ -129,10 +133,25 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
     ?.filter(lecturer => lecturer.classId === formClass)
     ?.map(lecturer => lecturer.id) || [];
 
-  // Filter available lecturers (exclude only those assigned to same course AND same class)
-  const availableLecturers = lecturers?.filter(lecturer => 
-    !alreadyAssignedLecturerIds.includes(lecturer.id)
-  ) || [];
+  // Get available lecturers based on selected type
+  const getAvailableLecturers = () => {
+    let lecturerList = [];
+    
+    if (lecturerType === "program_studi") {
+      // Show lecturers from selected program only
+      lecturerList = programLecturers || [];
+    } else {
+      // Show teaching staff (lecturers without program_id)
+      lecturerList = teachingStaff?.filter(lecturer => !lecturer.programId) || [];
+    }
+    
+    // Filter out already assigned lecturers
+    return lecturerList.filter(lecturer => 
+      !alreadyAssignedLecturerIds.includes(lecturer.id)
+    );
+  };
+
+  const availableLecturers = getAvailableLecturers();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -209,10 +228,31 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
             </div>
           )}
 
-          {/* Lecturer Selection */}
+          {/* Lecturer Type Selection */}
           {selectedCourse && formClass && (
+            <div className="space-y-2">
+              <Label>Tipe Dosen</Label>
+              <Select value={lecturerType} onValueChange={(value) => {
+                setLecturerType(value);
+                setSelectedLecturers([]); // Reset selection when switching types
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Tipe Dosen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="program_studi">Dosen Program Studi</SelectItem>
+                  <SelectItem value="tenaga_pengajar">Tenaga Pengajar PT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Lecturer Selection */}
+          {selectedCourse && formClass && lecturerType && (
             <div className="space-y-4">
-              <Label>Dosen yang Tersedia</Label>
+              <Label>
+                {lecturerType === "program_studi" ? "Dosen Program Studi yang Tersedia" : "Tenaga Pengajar PT yang Tersedia"}
+              </Label>
               
               {availableLecturers.length > 0 ? (
                 <div className="space-y-3 max-h-60 overflow-y-auto">
