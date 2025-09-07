@@ -138,8 +138,8 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
     let lecturerList = [];
     
     if (lecturerType === "program_studi") {
-      // Show lecturers from selected program only
-      lecturerList = programLecturers || [];
+      // Show lecturers from all programs (allow cross-program assignments)
+      lecturerList = teachingStaff?.filter(lecturer => lecturer.programId) || [];
     } else {
       // Show teaching staff (lecturers without program_id)
       lecturerList = teachingStaff?.filter(lecturer => !lecturer.programId) || [];
