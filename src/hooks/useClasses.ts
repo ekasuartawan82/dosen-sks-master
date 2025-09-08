@@ -10,9 +10,9 @@ export interface Class {
   updated_at: string;
 }
 
-export const useClasses = (level?: number) => {
+export const useClasses = (level?: number, programId?: string) => {
   return useQuery({
-    queryKey: ['classes', level],
+    queryKey: ['classes', level, programId],
     queryFn: async (): Promise<Class[]> => {
       let query = supabase
         .from('classes')
@@ -22,6 +22,10 @@ export const useClasses = (level?: number) => {
       
       if (level) {
         query = query.eq('level', level);
+      }
+
+      if (programId) {
+        query = query.eq('program_id', programId);
       }
 
       const { data: classes, error } = await query;
