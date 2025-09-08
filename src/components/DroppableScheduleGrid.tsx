@@ -271,7 +271,7 @@ const DroppableScheduleGrid = ({
                         </div>
                       ) : (
                         <span className="text-muted-foreground/60 text-center">
-                          Kosong
+                          Belajar Mandiri
                         </span>
                       )}
                     </div>

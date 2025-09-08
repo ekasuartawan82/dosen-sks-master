@@ -234,3 +234,153 @@ export const useDeleteSchedule = () => {
     }
   });
 };
+
+export const useGenerateAutoSchedule = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: {
+      classId: string;
+      academicYear: string;
+      assignmentIds: string[];
+    }) => {
+      // Auto-generate schedule logic
+      const assignments = params.assignmentIds;
+      const generatedSchedules = [];
+      
+      let currentDay = 1; // Monday
+      let currentTimeSlot = 0; // First time slot
+      
+      for (const assignmentId of assignments) {
+        // Skip break time slots (3 and 6)
+        if (currentTimeSlot === 3 || currentTimeSlot === 6) {
+          currentTimeSlot++;
+          if (currentTimeSlot >= 9) {
+            currentTimeSlot = 0;
+            currentDay++;
+            if (currentDay > 5) currentDay = 1; // Reset to Monday
+          }
+        }
+        
+        generatedSchedules.push({
+          assignment_id: assignmentId,
+          academic_year: params.academicYear,
+          day_of_week: currentDay,
+          time_slot: currentTimeSlot,
+          has_conflict: false
+        });
+        
+        currentTimeSlot++;
+        if (currentTimeSlot >= 9) {
+          currentTimeSlot = 0;
+          currentDay++;
+          if (currentDay > 5) currentDay = 1; // Reset to Monday
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('schedules')
+        .insert(generatedSchedules)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      toast({
+        title: "Jadwal berhasil digenerate",
+        description: "Jadwal otomatis telah dibuat dan dapat diedit",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Gagal generate jadwal",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+};
+
+export const useCheckAllConflicts = () => {
+  return useMutation({
+    mutationFn: async (params: {
+      academicYear: string;
+      programId?: string;
+      level?: number;
+    }) => {
+      let query = supabase
+        .from('schedules')
+        .select(`
+          *,
+          assignments (
+            courses (
+              id,
+              name,
+              sks
+            ),
+            lecturers (
+              id,
+              name
+            ),
+            classes (
+              id,
+              name,
+              level,
+              program_id
+            )
+          )
+        `)
+        .eq('academic_year', params.academicYear);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      // Check for lecturer conflicts across all schedules
+      const conflicts = [];
+      const lecturerScheduleMap = new Map();
+
+      for (const schedule of data || []) {
+        const lecturerInfo = schedule.assignments.lecturers;
+        const classInfo = schedule.assignments.classes;
+        const courseInfo = schedule.assignments.courses;
+        
+        // Filter by program and level if specified
+        if (params.programId && classInfo.program_id !== params.programId) continue;
+        if (params.level && classInfo.level !== params.level) continue;
+
+        const key = `${lecturerInfo.id}-${schedule.day_of_week}-${schedule.time_slot}`;
+        
+        if (lecturerScheduleMap.has(key)) {
+          const existingSchedule = lecturerScheduleMap.get(key);
+          conflicts.push({
+            lecturer_name: lecturerInfo.name,
+            conflicts: [
+              {
+                class_name: existingSchedule.class_name,
+                course_name: existingSchedule.course_name,
+                day: schedule.day_of_week,
+                time_slot: schedule.time_slot
+              },
+              {
+                class_name: classInfo.name,
+                course_name: courseInfo.name,
+                day: schedule.day_of_week,
+                time_slot: schedule.time_slot
+              }
+            ]
+          });
+        } else {
+          lecturerScheduleMap.set(key, {
+            class_name: classInfo.name,
+            course_name: courseInfo.name
+          });
+        }
+      }
+
+      return conflicts;
+    }
+  });
+};
