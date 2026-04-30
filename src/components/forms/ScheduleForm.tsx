@@ -54,7 +54,7 @@ const ScheduleForm = ({
   const [conflictData, setConflictData] = useState<any[]>([]);
   const [pendingSubmission, setPendingSubmission] = useState<any>(null);
 
-  const { data: assignments } = useAssignments(classId);
+  const { data: assignments } = useAssignments(classId, academicYear);
   const createScheduleMutation = useCreateSchedule();
   const checkConflictsMutation = useCheckScheduleConflicts();
 
@@ -77,7 +77,8 @@ const ScheduleForm = ({
       const conflicts = await checkConflictsMutation.mutateAsync({
         assignmentId: values.assignment_id,
         dayOfWeek,
-        timeSlot
+        timeSlot,
+        academicYear
       });
 
       if (conflicts && conflicts.length > 0) {

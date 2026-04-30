@@ -4,11 +4,13 @@ import ProgramFilter from "./ProgramFilter";
 import { Users, BookOpen, GraduationCap, TrendingUp, School } from "lucide-react";
 import { useLecturers } from "@/hooks/useLecturers";
 import { usePrograms } from "@/hooks/usePrograms";
+import { useActiveAcademicYear } from "@/hooks/useAcademicYear";
 import { useState } from "react";
 
 const Dashboard = () => {
   const [selectedProgram, setSelectedProgram] = useState<string>("all");
-  const { data: lecturers = [], isLoading, error } = useLecturers(selectedProgram);
+  const { data: activeAcademicYear } = useActiveAcademicYear();
+  const { data: lecturers = [], isLoading, error } = useLecturers(selectedProgram, false, activeAcademicYear?.name);
   const { data: programs = [] } = usePrograms();
 
   if (isLoading) {

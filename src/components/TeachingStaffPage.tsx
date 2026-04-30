@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "./StatusBadge";
 import TeachingStaffForm from "./forms/TeachingStaffForm";
+import { getLocalData, saveLocalData } from "@/lib/localData";
 
 interface TeachingStaff {
   id: string;
@@ -41,108 +42,210 @@ const getStructuralSKS = (position: string): number => {
   }
 };
 
+const isPKLCourse = (courseName: string): boolean => {
+  const name = courseName.toLowerCase();
+  return name.includes('pkl') || 
+         name.includes('praktek kerja lapangan') || 
+         name.includes('praktik kerja lapangan') ||
+         name.includes('magang');
+};
+
+interface LocalLecturer {
+  id: string;
+  name: string;
+  status: string;
+  structural_position: string;
+  program_id?: string;
+}
+
+interface LocalAssignment {
+  id: string;
+  course_id: string;
+  lecturer_id: string;
+  class_id?: string;
+}
+
+interface LocalCourse {
+  id: string;
+  name: string;
+  sks: number;
+  program_id: string;
+}
+
+interface LocalClass {
+  id: string;
+  name: string;
+  program_id: string;
+}
+
 const useTeachingStaff = () => {
   return useQuery({
     queryKey: ['teaching-staff'],
     queryFn: async (): Promise<TeachingStaff[]> => {
-      // Get non-functional and practitioner lecturers
-      const { data: lecturers, error } = await supabase
-        .from('lecturers')
-        .select(`
-          id,
-          name,
-          status,
-          structural_position,
-          assignments (
-            course_id,
-            class_id,
-            courses (
-              id,
-              name,
-              sks,
-              program_id
-            ),
-            classes (
-              id,
-              name,
-              program_id
+      try {
+        // Get non-functional and practitioner lecturers
+        const { data: lecturers, error } = await supabase
+          .from('lecturers')
+          .select(`
+            id,
+            name,
+            status,
+            structural_position,
+            assignments (
+              course_id,
+              class_id,
+              courses (
+                id,
+                name,
+                sks,
+                program_id
+              ),
+              classes (
+                id,
+                name,
+                program_id
+              )
             )
-          )
-        `)
-        .in('status', ['Non-Fungsional', 'Praktisi']);
+          `)
+          .in('status', ['Non-Fungsional', 'Praktisi']);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Get course assignment counts for team teaching calculation
-      const { data: courseCounts, error: countsError } = await supabase
-        .from('assignments')
-        .select(`
-          course_id, 
-          class_id,
-          lecturers!inner(status),
-          courses!inner(program_id)
-        `);
+        // Get course assignment counts for team teaching calculation
+        const { data: courseCounts, error: countsError } = await supabase
+          .from('assignments')
+          .select(`
+            course_id, 
+            class_id,
+            lecturers!inner(status),
+            courses!inner(program_id)
+          `);
 
-      if (countsError) throw countsError;
+        if (countsError) throw countsError;
 
-      // Count how many FUNCTIONAL lecturers are assigned to each course per class
-      const courseAssignmentCounts = courseCounts.reduce((acc, assignment) => {
-        const key = `${assignment.course_id}-${assignment.class_id || 'no-class'}`;
-        // Only count functional lecturers for team teaching calculation
-        if (assignment.lecturers.status === 'Fungsional') {
-          acc[key] = (acc[key] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-
-      // Calculate workload for each lecturer
-      return lecturers.map(lecturer => {
-        const structuralSKS = getStructuralSKS(lecturer.structural_position);
-        
-        let teachingSKS = 0;
-        const courses = lecturer.assignments.map(assignment => {
-          const course = assignment.courses;
-          const classInfo = assignment.classes;
-          const key = `${course.id}-${assignment.class_id || 'no-class'}`;
-          
-          let sksShare: number;
-          let sharedWith: number;
-          
-          // For non-functional and practitioner lecturers
-          const functionalCount = courseAssignmentCounts[key] || 0;
-          if (functionalCount > 0) {
-            sksShare = 0; // Non-functional/practitioner doesn't get SKS if functional lecturer exists
-            sharedWith = functionalCount;
-          } else {
-            sksShare = course.sks; // Only gets full SKS if no functional lecturer
-            sharedWith = 1;
+        // Count how many FUNCTIONAL lecturers are assigned to each course per class
+        const courseAssignmentCounts = courseCounts.reduce((acc, assignment) => {
+          const key = `${assignment.course_id}-${assignment.class_id || 'no-class'}`;
+          if (assignment.lecturers.status === 'Fungsional') {
+            acc[key] = (acc[key] || 0) + 1;
           }
+          return acc;
+        }, {} as Record<string, number>);
+
+        // Calculate workload for each lecturer
+        return lecturers.map(lecturer => {
+          const structuralSKS = getStructuralSKS(lecturer.structural_position);
           
-          teachingSKS += sksShare;
-          
+          let teachingSKS = 0;
+          const courses = lecturer.assignments.map(assignment => {
+            const course = assignment.courses;
+            const classInfo = assignment.classes;
+            const key = `${course.id}-${assignment.class_id || 'no-class'}`;
+            
+            let sksShare: number;
+            let sharedWith: number;
+            
+            const functionalCount = courseAssignmentCounts[key] || 0;
+            if (functionalCount > 0) {
+              sksShare = 0;
+              sharedWith = functionalCount;
+            } else {
+              sksShare = course.sks;
+              sharedWith = 1;
+            }
+            
+            teachingSKS += sksShare;
+            
+            return {
+              id: course.id,
+              name: course.name,
+              sks: course.sks,
+              sharedWith,
+              className: classInfo?.name,
+              classId: classInfo?.id
+            };
+          });
+
+          const totalWorkload = Math.round((teachingSKS + structuralSKS) * 100) / 100;
+
           return {
-            id: course.id,
-            name: course.name,
-            sks: course.sks,
-            sharedWith,
-            className: classInfo?.name,
-            classId: classInfo?.id
+            id: lecturer.id,
+            name: lecturer.name,
+            status: lecturer.status as "Non-Fungsional" | "Praktisi",
+            structural_position: lecturer.structural_position,
+            teachingSKS: Math.round(teachingSKS * 100) / 100,
+            structuralSKS,
+            totalWorkload,
+            courses
           };
         });
+      } catch {
+        // Fallback to localStorage
+        console.warn('Using localStorage for teaching staff');
+        const allLecturers = getLocalData<LocalLecturer>('lecturers');
+        const lecturers = allLecturers.filter(l => l.status === 'Non-Fungsional' || l.status === 'Praktisi');
+        const assignments = getLocalData<LocalAssignment>('assignments');
+        const courses = getLocalData<LocalCourse>('courses');
+        const classes = getLocalData<LocalClass>('classes');
 
-        const totalWorkload = Math.round((teachingSKS + structuralSKS) * 100) / 100;
+        // Count functional lecturers per course
+        const courseAssignmentCounts: Record<string, number> = {};
+        assignments.forEach(a => {
+          const lecturer = allLecturers.find(l => l.id === a.lecturer_id);
+          if (lecturer?.status === 'Fungsional') {
+            const key = `${a.course_id}-${a.class_id || 'no-class'}`;
+            courseAssignmentCounts[key] = (courseAssignmentCounts[key] || 0) + 1;
+          }
+        });
 
-        return {
-          id: lecturer.id,
-          name: lecturer.name,
-          status: lecturer.status as "Non-Fungsional" | "Praktisi",
-          structural_position: lecturer.structural_position,
-          teachingSKS: Math.round(teachingSKS * 100) / 100,
-          structuralSKS,
-          totalWorkload,
-          courses
-        };
-      });
+        return lecturers.map(lecturer => {
+          const structuralSKS = getStructuralSKS(lecturer.structural_position);
+          const lecturerAssignments = assignments.filter(a => a.lecturer_id === lecturer.id);
+          
+          let teachingSKS = 0;
+          const lecturerCourses = lecturerAssignments.map(a => {
+            const course = courses.find(c => c.id === a.course_id);
+            const classInfo = classes.find(c => c.id === a.class_id);
+            const key = `${a.course_id}-${a.class_id || 'no-class'}`;
+            
+            const functionalCount = courseAssignmentCounts[key] || 0;
+            let sksShare = 0;
+            let sharedWith = 1;
+            
+            if (course) {
+              if (functionalCount > 0) {
+                sksShare = 0;
+                sharedWith = functionalCount;
+              } else {
+                sksShare = course.sks;
+              }
+              teachingSKS += sksShare;
+            }
+            
+            return {
+              id: course?.id || a.course_id,
+              name: course?.name || 'Unknown',
+              sks: course?.sks || 0,
+              sharedWith,
+              className: classInfo?.name,
+              classId: classInfo?.id
+            };
+          });
+
+          const totalWorkload = Math.round((teachingSKS + structuralSKS) * 100) / 100;
+
+          return {
+            id: lecturer.id,
+            name: lecturer.name,
+            status: lecturer.status as "Non-Fungsional" | "Praktisi",
+            structural_position: lecturer.structural_position,
+            teachingSKS: Math.round(teachingSKS * 100) / 100,
+            structuralSKS,
+            totalWorkload,
+            courses: lecturerCourses
+          };
+        });
+      }
     }
   });
 };
@@ -160,10 +263,15 @@ const TeachingStaffPage = () => {
     staff.status.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  const getWorkloadStatus = (total: number) => {
-    const targetSKS = 12;
-    if (total < targetSKS) return "insufficient";
-    if (total === targetSKS) return "sufficient";
+  const getWorkloadStatus = (staff: TeachingStaff) => {
+    // Calculate non-PKL workload for status
+    const nonPKLTeachingSKS = staff.courses
+      .filter(c => !isPKLCourse(c.name))
+      .reduce((sum, c) => sum + (c.sks / c.sharedWith), 0);
+    const workloadForStatus = nonPKLTeachingSKS + staff.structuralSKS;
+    
+    if (workloadForStatus < 12) return "insufficient";
+    if (workloadForStatus <= 16) return "sufficient";
     return "excess";
   };
 
@@ -194,13 +302,36 @@ const TeachingStaffPage = () => {
       toast({ title: `${staffName} berhasil dihapus` });
       queryClient.invalidateQueries({ queryKey: ['teaching-staff'] });
       queryClient.invalidateQueries({ queryKey: ['lecturers'] });
-    } catch (error) {
-      console.error('Error deleting teaching staff:', error);
-      toast({
-        title: "Gagal menghapus tenaga pengajar",
-        description: "Terjadi kesalahan saat menghapus data",
-        variant: "destructive"
-      });
+    } catch {
+      // Try localStorage fallback
+      try {
+        const localAssignments = getLocalData<LocalAssignment>('assignments');
+        const hasAssignments = localAssignments.some(a => a.lecturer_id === staffId);
+        
+        if (hasAssignments) {
+          toast({
+            title: "Tidak dapat menghapus tenaga pengajar",
+            description: "Tenaga pengajar masih memiliki penugasan mata kuliah.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const lecturers = getLocalData<LocalLecturer>('lecturers');
+        const filtered = lecturers.filter(l => l.id !== staffId);
+        saveLocalData('lecturers', filtered);
+
+        toast({ title: `${staffName} berhasil dihapus` });
+        queryClient.invalidateQueries({ queryKey: ['teaching-staff'] });
+        queryClient.invalidateQueries({ queryKey: ['lecturers'] });
+      } catch (localError) {
+        console.error('Error deleting teaching staff:', localError);
+        toast({
+          title: "Gagal menghapus tenaga pengajar",
+          description: "Terjadi kesalahan saat menghapus data",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -314,7 +445,7 @@ const TeachingStaffPage = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                  <StatusBadge status={getWorkloadStatus(staff.totalWorkload)} />
+                  <StatusBadge status={getWorkloadStatus(staff)} />
                   <div className="text-sm text-muted-foreground">
                     <div>Total: <span className="font-medium">{staff.totalWorkload.toFixed(1)} SKS</span></div>
                     <div>Mengajar: {staff.teachingSKS.toFixed(1)} | Jabatan: {staff.structuralSKS}</div>

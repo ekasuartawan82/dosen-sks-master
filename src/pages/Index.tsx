@@ -10,6 +10,8 @@ import PostsSection from "@/components/PostsSection";
 import ProgramsPage from "@/components/ProgramsPage";
 import TeachingStaffPage from "@/components/TeachingStaffPage";
 import RekapPage from "@/components/RekapPage";
+import HistoriMengajarPage from "@/components/HistoriMengajarPage";
+import ProfilePage from "@/components/ProfilePage";
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -32,10 +34,14 @@ const Index = () => {
         return <AssignmentsPage />;
       case "rekap":
         return <RekapPage />;
+      case "rekap-histori":
+        return <HistoriMengajarPage />;
       case "schedules":
         return <SchedulePage />;
       case "posts":
         return <PostsSection />;
+      case "profile":
+        return <ProfilePage />;
       default:
         return <Dashboard />;
     }

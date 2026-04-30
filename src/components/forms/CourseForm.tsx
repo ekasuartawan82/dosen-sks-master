@@ -5,194 +5,205 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
 import { usePrograms } from "@/hooks/usePrograms";
+import { useCreateCourse, useUpdateCourse } from "@/hooks/useCourses";
 
 interface CourseFormProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  course?: {
-    id: string;
-    name: string;
-    sks: number;
-    level: number;
-    program_id?: string;
-  };
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    course?: {
+        id: string;
+        name: string;
+        sks: number;
+        level: number;
+        semester: number;
+        program_id?: string;
+    };
 }
 
 const CourseForm = ({ open, onOpenChange, course }: CourseFormProps) => {
-  const [name, setName] = useState("");
-  const [sks, setSks] = useState("");
-  const [level, setLevel] = useState("");
-  const [programId, setProgramId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { data: programs = [] } = usePrograms();
+    const [name, setName] = useState("");
+    const [sks, setSks] = useState("");
+    const [level, setLevel] = useState("");
+    const [semester, setSemester] = useState("");
+    const [programId, setProgramId] = useState("");
 
-  // Update form data when course prop changes
-  useEffect(() => {
-    if (course) {
-      setName(course.name || "");
-      setSks(course.sks?.toString() || "");
-      setLevel(course.level?.toString() || "");
-      setProgramId(course.program_id || "");
-    } else {
-      // Reset form for new course
-      setName("");
-      setSks("");
-      setLevel("");
-      setProgramId("");
-    }
-  }, [course]);
+    const { toast } = useToast();
+    const { data: programs = [] } = usePrograms();
+    const createCourse = useCreateCourse();
+    const updateCourse = useUpdateCourse();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !sks || !level || !programId) return;
+    const isSubmitting = createCourse.isPending || updateCourse.isPending;
 
-    const sksNum = parseInt(sks);
-    const levelNum = parseInt(level);
-    
-    if (sksNum <= 0 || levelNum <= 0) {
-      toast({
-        title: "Input tidak valid",
-        description: "SKS dan Level harus berupa angka positif",
-        variant: "destructive"
-      });
-      return;
-    }
+    // Update form data when course prop changes
+    useEffect(() => {
+        if (course) {
+            setName(course.name || "");
+            setSks(course.sks?.toString() || "");
+            setLevel(course.level?.toString() || "");
+            setSemester(course.semester?.toString() || "");
+            setProgramId(course.program_id || "");
+        } else {
+            // Reset form for new course
+            setName("");
+            setSks("");
+            setLevel("");
+            setSemester("");
+            setProgramId("");
+        }
+    }, [course]);
 
-    setIsSubmitting(true);
-    try {
-      if (course) {
-        // Update existing course
-        const { error } = await supabase
-          .from('courses')
-          .update({
-            name: name.trim(),
-            sks: sksNum,
-            level: levelNum,
-            program_id: programId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', course.id);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name.trim() || !sks || !level || !semester || !programId) return;
 
-        if (error) throw error;
-        toast({ title: "Mata kuliah berhasil diperbarui" });
-      } else {
-        // Create new course
-        const { error } = await supabase
-          .from('courses')
-          .insert({
-            name: name.trim(),
-            sks: sksNum,
-            level: levelNum,
-            program_id: programId
-          });
+        const sksNum = parseInt(sks);
+        const levelNum = parseInt(level);
+        const semesterNum = parseInt(semester);
 
-        if (error) throw error;
-        toast({ title: "Mata kuliah berhasil ditambahkan" });
-      }
+        if (sksNum <= 0 || levelNum <= 0 || semesterNum <= 0) {
+            toast({
+                title: "Input tidak valid",
+                description: "SKS, Level, dan Semester harus berupa angka positif",
+                variant: "destructive"
+            });
+            return;
+        }
 
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      queryClient.invalidateQueries({ queryKey: ['lecturers'] });
-      onOpenChange(false);
-      
-      // Reset form
-      setName("");
-      setSks("");
-      setLevel("");
-      setProgramId("");
-    } catch (error) {
-      console.error('Error saving course:', error);
-      toast({
-        title: "Gagal menyimpan mata kuliah",
-        description: "Terjadi kesalahan saat menyimpan data mata kuliah",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        try {
+            if (course) {
+                // Update existing course
+                await updateCourse.mutateAsync({
+                    id: course.id,
+                    name: name.trim(),
+                    sks: sksNum,
+                    level: levelNum,
+                    semester: semesterNum,
+                    program_id: programId,
+                });
+            } else {
+                // Create new course
+                await createCourse.mutateAsync({
+                    name: name.trim(),
+                    sks: sksNum,
+                    level: levelNum,
+                    semester: semesterNum,
+                    program_id: programId
+                });
+            }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {course ? "Edit Mata Kuliah" : "Tambah Mata Kuliah Baru"}
-          </DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nama Mata Kuliah</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Masukkan nama mata kuliah"
-              required
-            />
-          </div>
+            onOpenChange(false);
 
-          <div className="space-y-2">
-            <Label htmlFor="sks">SKS</Label>
-            <Input
-              id="sks"
-              type="number"
-              value={sks}
-              onChange={(e) => setSks(e.target.value)}
-              placeholder="Masukkan jumlah SKS"
-              min="1"
-              required
-            />
-          </div>
+            // Reset form
+            setName("");
+            setSks("");
+            setLevel("");
+            setSemester("");
+            setProgramId("");
+        } catch (error) {
+            console.error('Error saving course:', error);
+            // Toast is handled by the hooks
+        }
+    };
 
-          <div className="space-y-2">
-            <Label htmlFor="level">Level</Label>
-            <Input
-              id="level"
-              type="number"
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              placeholder="Masukkan level (1-4)"
-              min="1"
-              max="4"
-              required
-            />
-          </div>
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>
+                        {course ? "Edit Mata Kuliah" : "Tambah Mata Kuliah Baru"}
+                    </DialogTitle>
+                </DialogHeader>
 
-          <div className="space-y-2">
-            <Label>Program Studi</Label>
-            <Select value={programId} onValueChange={setProgramId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih Program Studi" />
-              </SelectTrigger>
-              <SelectContent>
-                {programs.map((program) => (
-                  <SelectItem key={program.id} value={program.id}>
-                    {program.name} ({program.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="name">Nama Mata Kuliah</Label>
+                        <Input
+                            id="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Masukkan nama mata kuliah"
+                            required
+                        />
+                    </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !name.trim() || !sks || !level || !programId}>
-              {isSubmitting ? "Menyimpan..." : course ? "Perbarui" : "Simpan"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+                    <div className="space-y-2">
+                        <Label htmlFor="sks">SKS</Label>
+                        <Input
+                            id="sks"
+                            type="number"
+                            value={sks}
+                            onChange={(e) => setSks(e.target.value)}
+                            placeholder="Masukkan jumlah SKS"
+                            min="1"
+                            required
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="level">Tingkat</Label>
+                            <Select value={level} onValueChange={setLevel}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pilih Tingkat" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Tingkat 1</SelectItem>
+                                    <SelectItem value="2">Tingkat 2</SelectItem>
+                                    <SelectItem value="3">Tingkat 3</SelectItem>
+                                    <SelectItem value="4">Tingkat 4</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="semester">Semester</Label>
+                            <Select value={semester} onValueChange={setSemester}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pilih Semester" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Semester 1</SelectItem>
+                                    <SelectItem value="2">Semester 2</SelectItem>
+                                    <SelectItem value="3">Semester 3</SelectItem>
+                                    <SelectItem value="4">Semester 4</SelectItem>
+                                    <SelectItem value="5">Semester 5</SelectItem>
+                                    <SelectItem value="6">Semester 6</SelectItem>
+                                    <SelectItem value="7">Semester 7</SelectItem>
+                                    <SelectItem value="8">Semester 8</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Program Studi</Label>
+                        <Select value={programId} onValueChange={setProgramId}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Pilih Program Studi" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {programs.map((program) => (
+                                    <SelectItem key={program.id} value={program.id}>
+                                        {program.name} ({program.code})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                            Batal
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting || !name.trim() || !sks || !level || !semester || !programId}>
+                            {isSubmitting ? "Menyimpan..." : course ? "Perbarui" : "Simpan"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
 };
 
 export default CourseForm;
