@@ -96,9 +96,9 @@ CREATE TRIGGER update_posts_updated_at
   EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Insert sample posts
-INSERT INTO public.profiles (id, full_name, email, role) VALUES
-  ('550e8400-e29b-41d4-a716-446655440000', 'Admin System', 'admin@system.com', 'admin');
+-- INSERT INTO public.profiles (id, full_name, email, role) VALUES
+--   ('550e8400-e29b-41d4-a716-446655440000', 'Admin System', 'admin@system.com', 'admin');
 
-INSERT INTO public.posts (user_id, title, content, type, is_pinned) VALUES
-  ('550e8400-e29b-41d4-a716-446655440000', 'Welcome to Lecturer Management System', 'System untuk mengelola beban kerja dosen telah aktif. Silakan login untuk mengakses fitur lengkap.', 'announcement', true),
-  ('550e8400-e29b-41d4-a716-446655440000', 'Pengumuman Pembagian SKS Semester Baru', 'Pembagian SKS untuk semester baru telah diperbaharui. Silakan periksa dashboard untuk melihat beban kerja terbaru.', 'news', false);
+-- INSERT INTO public.posts (user_id, title, content, type, is_pinned) VALUES
+--   ('550e8400-e29b-41d4-a716-446655440000', 'Welcome to Lecturer Management System', 'System untuk mengelola beban kerja dosen telah aktif. Silakan login untuk mengakses fitur lengkap.', 'announcement', true),
+--   ('550e8400-e29b-41d4-a716-446655440000', 'Pengumuman Pembagian SKS Semester Baru', 'Pembagian SKS untuk semester baru telah diperbaharui. Silakan periksa dashboard untuk melihat beban kerja terbaru.', 'news', false);

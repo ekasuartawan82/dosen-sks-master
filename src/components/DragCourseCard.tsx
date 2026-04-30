@@ -7,9 +7,11 @@ import { cn } from '@/lib/utils';
 
 interface DragCourseCardProps {
   assignment: Assignment;
+  dragId?: string;
+  disabled?: boolean;
 }
 
-const DragCourseCard = ({ assignment }: DragCourseCardProps) => {
+const DragCourseCard = ({ assignment, dragId, disabled = false }: DragCourseCardProps) => {
   const {
     attributes,
     listeners,
@@ -17,8 +19,12 @@ const DragCourseCard = ({ assignment }: DragCourseCardProps) => {
     transform,
     isDragging,
   } = useDraggable({
-    id: assignment.id,
-    data: assignment,
+    id: dragId || `assignment:${assignment.id}`,
+    data: {
+      type: 'assignment',
+      assignment,
+    },
+    disabled,
   });
 
   const style = transform ? {
@@ -30,13 +36,14 @@ const DragCourseCard = ({ assignment }: DragCourseCardProps) => {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "cursor-grab transition-all duration-300 group border-2",
+        "transition-all duration-300 group border-2",
+        disabled ? "cursor-default" : "cursor-grab",
         isDragging 
           ? 'opacity-80 scale-110 rotate-3 shadow-xl border-primary z-50' 
           : 'hover:shadow-lg hover:scale-105 hover:border-primary/50 border-border'
       )}
-      {...listeners}
-      {...attributes}
+      {...(!disabled ? listeners : {})}
+      {...(!disabled ? attributes : {})}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User, Calendar, School, UserCheck, FileText } from "lucide-react";
+import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogOut, User, Calendar, School, UserCheck, FileText, UserCircle, History } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import AcademicYearSelector from "./AcademicYearSelector";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,8 +33,10 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
     { id: "courses", label: "Data Mata Kuliah", icon: BookOpen },
     { id: "assignments", label: "Plotting Dosen", icon: GraduationCap },
     { id: "rekap", label: "Rekap", icon: FileText },
+    { id: "rekap-histori", label: "Histori Mengajar", icon: History },
     { id: "schedules", label: "Ploting Jadwal", icon: Calendar },
     { id: "posts", label: "Pengumuman", icon: MessageSquare },
+    { id: "profile", label: "Profile", icon: UserCircle },
   ];
 
   return (
@@ -109,7 +112,8 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
             </Button>
             
             <div className="flex items-center space-x-4">
-              <div className="text-right">
+              <AcademicYearSelector showManage={true} />
+              <div className="text-right hidden md:block">
                 <p className="text-sm font-medium">Sistem Plotting Beban Mengajar</p>
                 <p className="text-xs text-muted-foreground">Multi Program Studi</p>
               </div>

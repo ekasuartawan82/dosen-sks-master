@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FileText, Download, Printer } from "lucide-react";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useCourses } from "@/hooks/useCourses";
+import { useActiveAcademicYear } from "@/hooks/useAcademicYear";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProgramFilter from "./ProgramFilter";
 import LevelFilter from "./LevelFilter";
@@ -14,17 +15,20 @@ const RekapPage = () => {
   const [selectedProgram, setSelectedProgram] = useState<string>("all");
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [selectedClass, setSelectedClass] = useState<string>("all");
+  const { data: activeAcademicYear } = useActiveAcademicYear();
 
   // Get filtered courses based on selections
   const { data: courses, isLoading: loadingCourses } = useCourses(
     selectedProgram,
     selectedLevel,
-    selectedClass === "all" ? undefined : selectedClass
+    selectedClass === "all" ? undefined : selectedClass,
+    activeAcademicYear?.name
   );
 
   // Get all assignments for the selected class if specific class is chosen
   const { data: assignments, isLoading: loadingAssignments } = useAssignments(
-    selectedClass === "all" ? undefined : selectedClass
+    selectedClass === "all" ? undefined : selectedClass,
+    activeAcademicYear?.name
   );
 
   // Prepare report data

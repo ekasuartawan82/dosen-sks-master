@@ -11,7 +11,7 @@ interface CourseBankProps {
 }
 
 const CourseBank = ({ classId, academicYear }: CourseBankProps) => {
-  const { data: assignments, isLoading: isLoadingAssignments } = useAssignments(classId);
+  const { data: assignments, isLoading: isLoadingAssignments } = useAssignments(classId, academicYear);
   const { data: schedules, isLoading: isLoadingSchedules } = useSchedules(academicYear, classId);
 
   // Filter out assignments that are already scheduled
