@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       assignments: {
         Row: {
+          academic_year: string
           class_id: string | null
           course_id: string
           created_at: string
@@ -23,6 +24,7 @@ export type Database = {
           lecturer_id: string
         }
         Insert: {
+          academic_year?: string
           class_id?: string | null
           course_id: string
           created_at?: string
@@ -30,6 +32,7 @@ export type Database = {
           lecturer_id: string
         }
         Update: {
+          academic_year?: string
           class_id?: string | null
           course_id?: string
           created_at?: string

@@ -1,9 +1,9 @@
-import { useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { AlertTriangle, Clock, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useSchedules, TIME_SLOTS, DAYS, useDeleteSchedule } from '@/hooks/useSchedules';
+import { Schedule, useSchedules, TIME_SLOTS, DAYS, useDeleteSchedule } from '@/hooks/useSchedules';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DroppableScheduleGridProps {
@@ -43,6 +43,84 @@ const DroppableSlot = ({ dayId, timeSlotId, sks, onDrop, isActive, children }: D
   );
 };
 
+interface DraggableScheduledCardProps {
+  schedule: Schedule & { slotIndex: number; totalSlots: number };
+  onDelete: (scheduleId: string) => void;
+}
+
+const DraggableScheduledCard = ({ schedule, onDelete }: DraggableScheduledCardProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: `schedule:${schedule.id}`,
+    data: {
+      type: 'schedule',
+      schedule,
+    },
+  });
+
+  const style = {
+    gridRowEnd: `span ${schedule.totalSlots}`,
+    minHeight: `${schedule.totalSlots * 4}rem`,
+    ...(transform ? {
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    } : {}),
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group p-3 text-xs flex flex-col items-start justify-between relative rounded-lg transition-all duration-200 cursor-grab",
+        "bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20",
+        "hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 hover:shadow-md",
+        schedule.has_conflict && "border-destructive bg-gradient-to-br from-destructive/10 to-destructive/5",
+        isDragging && "opacity-70 scale-[1.02] shadow-xl z-50"
+      )}
+      {...listeners}
+      {...attributes}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(schedule.id);
+        }}
+        className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full bg-background/90 hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-all duration-200"
+        title="Hapus jadwal"
+      >
+        <X className="h-3 w-3" />
+      </Button>
+
+      <div className="w-full space-y-2 pr-8">
+        <div className="font-semibold text-sm leading-tight text-primary">
+          {schedule.assignments.courses.name}
+        </div>
+        <div className="text-xs text-muted-foreground leading-tight font-medium">
+          {schedule.assignments.lecturers.name}
+        </div>
+        <div className="flex items-center gap-2 mt-auto">
+          <Badge variant="outline" className="text-xs px-2 py-1 bg-background/50">
+            {schedule.assignments.courses.sks} SKS
+          </Badge>
+          {schedule.has_conflict && (
+            <div className="flex items-center gap-1 text-destructive">
+              <AlertTriangle className="h-3 w-3" />
+              <span className="text-xs font-medium">Konflik</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DroppableScheduleGrid = ({ 
   classId, 
   academicYear, 
@@ -52,6 +130,7 @@ const DroppableScheduleGrid = ({
 }: DroppableScheduleGridProps) => {
   const { data: schedules, isLoading } = useSchedules(academicYear, classId);
   const deleteSchedule = useDeleteSchedule();
+  const draggedScheduleId = activeId?.startsWith('schedule:') ? activeId.replace('schedule:', '') : null;
 
   const getScheduleForSlot = (dayOfWeek: number, timeSlot: number) => {
     return schedules?.find(
@@ -82,7 +161,8 @@ const DroppableScheduleGrid = ({
       }
       
       // Check if non-break slot is already occupied by another schedule
-      if (getScheduleForSlot(dayOfWeek, currentSlot)) return false;
+      const scheduleForSlot = getScheduleForSlot(dayOfWeek, currentSlot);
+      if (scheduleForSlot && scheduleForSlot.id !== draggedScheduleId) return false;
       
       // Count this slot towards our SKS requirement
       remainingSKS--;
@@ -186,51 +266,12 @@ const DroppableScheduleGrid = ({
 
                 // If there's a schedule and it's the first slot of that schedule
                 if (scheduleData && scheduleData.slotIndex === 0) {
-                  const schedule = scheduleData;
                   return (
-                    <div
+                    <DraggableScheduledCard
                       key={`${day.id}-${timeSlot.id}`}
-                      className={cn(
-                        "group p-3 text-xs flex flex-col items-start justify-between relative rounded-lg transition-all duration-200",
-                        "bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20",
-                        "hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 hover:shadow-md",
-                        schedule.has_conflict && "border-destructive bg-gradient-to-br from-destructive/10 to-destructive/5"
-                      )}
-                      style={{
-                        gridRowEnd: `span ${schedule.totalSlots}`,
-                        minHeight: `${schedule.totalSlots * 4}rem`
-                      }}
-                    >
-                      <Button
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDelete(schedule.id)}
-                        className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full bg-background/90 hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-all duration-200"
-                        title="Hapus jadwal"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      
-                      <div className="w-full space-y-2 pr-8">
-                        <div className="font-semibold text-sm leading-tight text-primary">
-                          {schedule.assignments.courses.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground leading-tight font-medium">
-                          {schedule.assignments.lecturers.name}
-                        </div>
-                        <div className="flex items-center gap-2 mt-auto">
-                          <Badge variant="outline" className="text-xs px-2 py-1 bg-background/50">
-                            {schedule.assignments.courses.sks} SKS
-                          </Badge>
-                          {schedule.has_conflict && (
-                            <div className="flex items-center gap-1 text-destructive">
-                              <AlertTriangle className="h-3 w-3" />
-                              <span className="text-xs font-medium">Konflik</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      schedule={scheduleData}
+                      onDelete={handleDelete}
+                    />
                   );
                 }
 

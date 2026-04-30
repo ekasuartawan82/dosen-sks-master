@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { DndContext, DragOverlay, DragStartEvent, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,12 +14,27 @@ import SettingsDialog from "./SettingsDialog";
 import ProgramFilter from "./ProgramFilter";
 import LevelFilter from "./LevelFilter";
 import { useClasses } from "@/hooks/useClasses";
-import { useSetting } from "@/hooks/useSettings";
-import { useCreateSchedule, useCheckScheduleConflicts, useGenerateAutoSchedule, useCheckAllConflicts } from "@/hooks/useSchedules";
+import { useAcademicYears, useActiveAcademicYear } from "@/hooks/useAcademicYear";
+import { ConflictCheck, DAYS, Schedule, TIME_SLOTS, useCreateSchedule, useCheckScheduleConflicts, useGenerateAutoSchedule, useCheckAllConflicts, useUpdateSchedule } from "@/hooks/useSchedules";
 import { useAssignments, Assignment } from "@/hooks/useAssignments";
 import { usePrograms } from "@/hooks/usePrograms";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+
+interface ConflictNotice {
+  lecturer_name: string;
+  conflicts: Array<{
+    class_name: string;
+    course_name: string;
+    day: number;
+    time_slot: number;
+    conflict_type: 'lecturer' | 'class';
+  }>;
+}
+
+type DragData =
+  | { type: 'assignment'; assignment: Assignment }
+  | { type: 'schedule'; schedule: Schedule };
 
 const SchedulePage = () => {
   const [selectedProgram, setSelectedProgram] = useState<string>("all");
@@ -30,32 +45,34 @@ const SchedulePage = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draggedAssignment, setDraggedAssignment] = useState<Assignment | null>(null);
-  const [conflicts, setConflicts] = useState<any[]>([]);
+  const [draggedSchedule, setDraggedSchedule] = useState<Schedule | null>(null);
+  const [conflicts, setConflicts] = useState<ConflictNotice[]>([]);
 
   const programId = selectedProgram === "all" ? undefined : selectedProgram;
   const levelNum = selectedLevel === "all" ? undefined : parseInt(selectedLevel);
 
   const { data: programs } = usePrograms();
   const { data: classes, isLoading: isLoadingClasses } = useClasses(levelNum, programId);
-  const { data: currentAcademicYear } = useSetting('current_academic_year');
-  const { data: assignments } = useAssignments(selectedClass);
+  const { data: academicYears = [] } = useAcademicYears();
+  const { data: activeAcademicYear } = useActiveAcademicYear();
+  const { data: assignments } = useAssignments(selectedClass, selectedAcademicYear);
   const createSchedule = useCreateSchedule();
+  const updateSchedule = useUpdateSchedule();
   const checkConflicts = useCheckScheduleConflicts();
   const generateAutoSchedule = useGenerateAutoSchedule();
-  const checkAllConflicts = useCheckAllConflicts();
+  const { mutate: checkAllConflictsMutate } = useCheckAllConflicts();
   const { toast } = useToast();
 
-  // Set default academic year when currentAcademicYear loads
+  // Set default academic year when activeAcademicYear loads
   useEffect(() => {
-    if (currentAcademicYear?.value && !selectedAcademicYear) {
-      setSelectedAcademicYear(currentAcademicYear.value);
+    if (activeAcademicYear?.name && !selectedAcademicYear) {
+      setSelectedAcademicYear(activeAcademicYear.name);
     }
-  }, [currentAcademicYear?.value, selectedAcademicYear]);
+  }, [activeAcademicYear?.name, selectedAcademicYear]);
 
-  // Check conflicts when filters change
-  useEffect(() => {
+  const refreshConflictNotices = useCallback(() => {
     if (selectedAcademicYear) {
-      checkAllConflicts.mutate({
+      checkAllConflictsMutate({
         academicYear: selectedAcademicYear,
         programId: programId,
         level: levelNum
@@ -63,25 +80,58 @@ const SchedulePage = () => {
         onSuccess: (data) => setConflicts(data)
       });
     }
-  }, [selectedAcademicYear, programId, levelNum]);
+  }, [checkAllConflictsMutate, levelNum, programId, selectedAcademicYear]);
+
+  // Check conflicts when filters change
+  useEffect(() => {
+    refreshConflictNotices();
+  }, [refreshConflictNotices]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
-    const assignment = assignments?.find(a => a.id === event.active.id);
+    const dragData = event.active.data.current as DragData | undefined;
+
+    if (dragData?.type === 'schedule') {
+      setDraggedSchedule(dragData.schedule);
+      setDraggedAssignment(null);
+      return;
+    }
+
+    const assignment = dragData?.assignment || assignments?.find(a => `assignment:${a.id}` === event.active.id);
     setDraggedAssignment(assignment || null);
+    setDraggedSchedule(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const dragData = active.data.current as DragData | undefined;
     setActiveId(null);
     setDraggedAssignment(null);
+    setDraggedSchedule(null);
 
     if (!over || !selectedClass || !selectedAcademicYear) return;
 
     const [dayOfWeek, timeSlot] = (over.id as string).split('-').map(Number);
-    const assignmentId = active.id as string;
 
+    if (dragData?.type === 'schedule') {
+      handleScheduleMove(dragData.schedule, dayOfWeek, timeSlot);
+      return;
+    }
+
+    const assignmentId = dragData?.assignment?.id || (active.id as string).replace('assignment:', '');
     handleScheduleCreate(assignmentId, dayOfWeek, timeSlot);
+  };
+
+  const buildConflictMessage = (items: ConflictCheck[]) => {
+    return items.map(c => {
+      const day = DAYS.find(d => d.id === c.day_of_week)?.label || 'hari yang sama';
+      const slot = TIME_SLOTS.find(s => s.id === c.time_slot)?.label || 'slot yang sama';
+      const subject = c.conflict_type === 'class'
+        ? `kelas ${c.conflicted_class_name}`
+        : c.conflicted_lecturer_name;
+
+      return `${subject} sudah terjadwal "${c.conflicted_course_name}" pada ${day}, ${slot}`;
+    }).join('\n');
   };
 
   const handleScheduleCreate = async (assignmentId: string, dayOfWeek: number, timeSlot: number) => {
@@ -92,18 +142,17 @@ const SchedulePage = () => {
       const conflicts = await checkConflicts.mutateAsync({
         assignmentId,
         dayOfWeek,
-        timeSlot
+        timeSlot,
+        academicYear: selectedAcademicYear
       });
 
       let shouldProceed = true;
       
       if (conflicts.length > 0) {
-        const conflictMessage = conflicts.map(c => 
-          `${c.conflicted_lecturer_name} sudah mengajar "${c.conflicted_course_name}" di ${c.conflicted_class_name}`
-        ).join(', ');
+        const conflictMessage = buildConflictMessage(conflicts);
 
         shouldProceed = window.confirm(
-          `PERINGATAN: Terdeteksi konflik jadwal!\n\n${conflictMessage}\n\nApakah Anda ingin tetap melanjutkan? Jadwal akan ditandai sebagai berpotensi konflik.`
+          `PERINGATAN: Terdeteksi jadwal bertabrakan!\n\n${conflictMessage}\n\nApakah Anda ingin tetap melanjutkan? Jadwal akan ditandai sebagai konflik.`
         );
       }
 
@@ -114,6 +163,8 @@ const SchedulePage = () => {
           day_of_week: dayOfWeek,
           time_slot: timeSlot,
           has_conflict: conflicts.length > 0
+        }, {
+          onSuccess: refreshConflictNotices
         });
       }
     } catch (error) {
@@ -125,11 +176,50 @@ const SchedulePage = () => {
     }
   };
 
+  const handleScheduleMove = async (schedule: Schedule, dayOfWeek: number, timeSlot: number) => {
+    if (!selectedAcademicYear) return;
+
+    try {
+      const conflicts = await checkConflicts.mutateAsync({
+        assignmentId: schedule.assignment_id,
+        dayOfWeek,
+        timeSlot,
+        academicYear: selectedAcademicYear,
+        excludeScheduleId: schedule.id
+      });
+
+      let shouldProceed = true;
+
+      if (conflicts.length > 0) {
+        shouldProceed = window.confirm(
+          `PERINGATAN: Slot tujuan bertabrakan!\n\n${buildConflictMessage(conflicts)}\n\nTetap pindahkan jadwal dan tandai sebagai konflik?`
+        );
+      }
+
+      if (shouldProceed) {
+        updateSchedule.mutate({
+          id: schedule.id,
+          day_of_week: dayOfWeek,
+          time_slot: timeSlot,
+          has_conflict: conflicts.length > 0
+        }, {
+          onSuccess: refreshConflictNotices
+        });
+      }
+    } catch {
+      toast({
+        title: "Gagal memindahkan jadwal",
+        description: "Terjadi kesalahan saat memeriksa slot tujuan",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleGenerateAutoSchedule = () => {
     if (!selectedClass || !selectedAcademicYear || !assignments) return;
 
     const shouldProceed = window.confirm(
-      `Generate jadwal otomatis untuk semua mata kuliah di kelas ini?\n\nJadwal akan ditempatkan secara otomatis dan dapat diedit setelahnya.`
+      `Generate jadwal otomatis untuk semua mata kuliah di kelas ini?\n\nSistem akan memilih slot dengan beban harian dosen paling ringan dan menandai jadwal yang tetap bertabrakan. Jadwal dapat digeser manual setelahnya.`
     );
 
     if (shouldProceed) {
@@ -137,11 +227,13 @@ const SchedulePage = () => {
         classId: selectedClass,
         academicYear: selectedAcademicYear,
         assignmentIds: assignments.map(a => a.id)
+      }, {
+        onSuccess: refreshConflictNotices
       });
     }
   };
 
-  if (!currentAcademicYear) {
+  if (!activeAcademicYear) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
@@ -190,7 +282,7 @@ const SchedulePage = () => {
                     <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
                       <SchedulePrintView
                         classId={selectedClass}
-                        academicYear={selectedAcademicYear || currentAcademicYear?.value}
+                        academicYear={selectedAcademicYear || activeAcademicYear?.name}
                       />
                     </DialogContent>
                   </Dialog>
@@ -203,16 +295,18 @@ const SchedulePage = () => {
               <div>
                 <label className="text-sm font-medium mb-2 block">Tahun Ajaran</label>
                 <Select 
-                  value={selectedAcademicYear || currentAcademicYear?.value} 
+                  value={selectedAcademicYear || activeAcademicYear?.name} 
                   onValueChange={setSelectedAcademicYear}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih tahun ajaran" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={currentAcademicYear?.value || ''}>{currentAcademicYear?.value}</SelectItem>
-                    <SelectItem value="2024/2025 Genap">2024/2025 Genap</SelectItem>
-                    <SelectItem value="2025/2026 Genap">2025/2026 Genap</SelectItem>
+                    {academicYears.map((year) => (
+                      <SelectItem key={year.id} value={year.name}>
+                        {year.name} {year.is_active ? "(Aktif)" : ""}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -262,7 +356,7 @@ const SchedulePage = () => {
 
             {/* Auto Generate Button */}
             {selectedClass && assignments && (
-              <div className="flex justify-center pt-4">
+              <div className="flex flex-col items-center gap-2 pt-4">
                 <Button 
                   onClick={handleGenerateAutoSchedule}
                   className="flex items-center gap-2"
@@ -271,6 +365,9 @@ const SchedulePage = () => {
                   <Zap className="h-4 w-4" />
                   {generateAutoSchedule.isPending ? "Generating..." : "Generate Jadwal Otomatis"}
                 </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Prioritas generate: sebar beban harian dosen, hindari bentrok dosen/kelas, lalu isi slot paling awal yang tersedia.
+                </p>
               </div>
             )}
 
@@ -282,7 +379,7 @@ const SchedulePage = () => {
                   <strong>Peringatan Konflik Jadwal:</strong> Ditemukan {conflicts.length} potensi konflik dosen. 
                   {conflicts.map((conflict, idx) => (
                     <div key={idx} className="mt-1 text-sm">
-                      • {conflict.lecturer_name}: {conflict.conflicts.length} konflik
+                      • {conflict.lecturer_name}: {conflict.conflicts.length} jadwal bertabrakan
                     </div>
                   ))}
                 </AlertDescription>
@@ -312,7 +409,7 @@ const SchedulePage = () => {
                     classId={selectedClass}
                     academicYear={selectedAcademicYear}
                     onDrop={handleScheduleCreate}
-                    draggedSKS={draggedAssignment?.courses.sks || null}
+                    draggedSKS={draggedAssignment?.courses.sks || draggedSchedule?.assignments.courses.sks || null}
                     activeId={activeId}
                   />
                 </CardContent>
@@ -324,7 +421,16 @@ const SchedulePage = () => {
       
       <DragOverlay>
         {activeId && draggedAssignment ? (
-          <DragCourseCard assignment={draggedAssignment} />
+          <DragCourseCard assignment={draggedAssignment} disabled />
+        ) : activeId && draggedSchedule ? (
+          <div className="rounded-lg border-2 border-primary bg-background p-3 shadow-xl">
+            <div className="font-semibold text-sm text-primary">
+              {draggedSchedule.assignments.courses.name}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {draggedSchedule.assignments.lecturers.name}
+            </div>
+          </div>
         ) : null}
       </DragOverlay>
     </DndContext>

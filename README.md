@@ -1,4 +1,17 @@
-# Welcome to your Lovable project
+# Sistem Plotting Beban Mengajar Dosen
+
+Aplikasi React/Vite untuk plotting dosen, monitoring beban mengajar, rekap, histori mengajar, dan penyusunan jadwal.
+
+## Data safety
+
+Sebelum melakukan update fitur, bug fix, migration, atau deployment production, baca aturan di [docs/DATA_SAFETY.md](docs/DATA_SAFETY.md).
+
+Ringkasnya:
+
+- deploy frontend tidak menghapus data client
+- data server hanya berubah lewat CRUD aplikasi, migration Supabase, SQL manual, atau restore/import
+- `.env`, backup JSON, `dist`, dan file temporary tidak boleh masuk GitHub
+- jalankan `npm run lint`, `npx tsc --noEmit`, dan `npm run build` sebelum push
 
 ## Project info
 
