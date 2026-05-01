@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { mockCourses, mockAssignments } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { getLocalDataWithInit, getLocalData, addLocalItem, updateLocalItem, deleteLocalItem } from '@/lib/localData';
+import { rethrowInProduction } from '@/lib/dataMode';
 
 export interface Course {
     id: string;
@@ -95,7 +96,8 @@ export const useCourses = (programId?: string, level?: string, classId?: string,
                 }
 
                 return filteredCourses;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage data for courses');
 
                 let filtered = getLocalCourses();
@@ -144,7 +146,8 @@ export const useCreateCourse = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for create course');
                 return addLocalItem<Course>('courses', course as Course);
             }
@@ -182,7 +185,8 @@ export const useUpdateCourse = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for update course');
                 const updated = updateLocalItem<Course>('courses', id, course);
                 if (!updated) throw new Error("Course not found");
@@ -219,7 +223,8 @@ export const useDeleteCourse = () => {
                     .eq('id', id);
 
                 if (error) throw error;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for delete course');
                 deleteLocalItem<Course>('courses', id);
             }
@@ -228,7 +233,7 @@ export const useDeleteCourse = () => {
             queryClient.invalidateQueries({ queryKey: ['courses'] });
             toast({
                 title: "Mata Kuliah berhasil dihapus",
-                description: "Data mata kuliah telah dihapus (Mode Offline)",
+                description: "Data mata kuliah telah dihapus",
             });
         },
         onError: (error: any) => {

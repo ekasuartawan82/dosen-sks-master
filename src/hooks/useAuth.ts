@@ -1,30 +1,79 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { getRoleCapabilities, normalizeRole, type AppRole, type RoleCapability } from '@/lib/roles';
+
+export interface AuthProfile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  avatar_url: string | null;
+}
+
+export interface AuthAccess {
+  role: AppRole;
+  capabilities: RoleCapability;
+}
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<AuthProfile | null>(null);
+  const [profileError, setProfileError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
+  const role = normalizeRole(profile?.role);
+  const capabilities = getRoleCapabilities(role);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const syncSession = async (session: Session | null) => {
+      if (!isMounted) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+      setProfile(null);
+      setProfileError(null);
+
+      if (!session?.user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role, avatar_url')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!isMounted) return;
+
+      if (error) {
+        setProfileError(error);
+      } else {
+        setProfile(data);
+      }
+
+      setLoading(false);
+    };
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+      (_event, session) => {
+        syncSession(session);
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      syncSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -59,6 +108,13 @@ export const useAuth = () => {
   return {
     user,
     session,
+    profile,
+    profileError,
+    access: {
+      role,
+      capabilities
+    } satisfies AuthAccess,
+    isAdmin: role === 'admin',
     loading,
     signUp,
     signIn,

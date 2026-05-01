@@ -81,7 +81,7 @@ const AssignmentsPage = () => {
             // Custom toast since we want to show the class name
             toast({
                 title: "Penugasan dihapus",
-                description: `${lecturerName} telah dihapus dari mata kuliah ini (${className}) - Mode Offline.`,
+                description: `${lecturerName} telah dihapus dari mata kuliah ini (${className}).`,
             });
         } catch (error: any) {
             // Error toast is handled by the hook

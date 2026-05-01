@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { mockLecturers } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { getLocalDataWithInit, getLocalData, addLocalItem, updateLocalItem, deleteLocalItem } from '@/lib/localData';
+import { rethrowInProduction } from '@/lib/dataMode';
 
 export interface Lecturer {
     id: string;
@@ -217,7 +218,8 @@ export const useLecturers = (programId?: string, includeTeachingStaff: boolean =
                         courses
                     };
                 });
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage data for lecturers');
 
                 let filteredLecturers = getLocalLecturers();
@@ -342,7 +344,8 @@ export const useCreateLecturer = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for create lecturer');
                 return addLocalItem<Lecturer>('lecturers', lecturer as Lecturer);
             }
@@ -380,7 +383,8 @@ export const useUpdateLecturer = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for update lecturer');
                 const updated = updateLocalItem<Lecturer>('lecturers', id, lecturer);
                 if (!updated) throw new Error("Lecturer not found");
@@ -417,7 +421,8 @@ export const useDeleteLecturer = () => {
                     .eq('id', id);
 
                 if (error) throw error;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for delete lecturer');
                 deleteLocalItem<Lecturer>('lecturers', id);
             }
@@ -426,7 +431,7 @@ export const useDeleteLecturer = () => {
             queryClient.invalidateQueries({ queryKey: ['lecturers'] });
             toast({
                 title: "Dosen berhasil dihapus",
-                description: "Data dosen telah dihapus (Mode Offline)",
+                description: "Data dosen telah dihapus",
             });
         },
         onError: (error: any) => {
