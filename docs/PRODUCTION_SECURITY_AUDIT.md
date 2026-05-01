@@ -24,6 +24,18 @@ Wajib sebelum deploy production:
 - Bersihkan history Git secara terkontrol dengan tool seperti `git filter-repo` atau BFG, lalu force-push hanya setelah koordinasi.
 - Jangan tampilkan isi secret di issue, PR, log, atau chat.
 
+## Cleanup PR Plan
+
+PR yang hanya menghapus `.env` dari branch biasa tetap dapat menampilkan nilai lama sebagai removed lines jika base branch masih punya `.env`. Kondisi itu tidak boleh di-merge.
+
+Rencana aman:
+
+1. Freeze merge/deploy dari PR yang masih menampilkan `.env` di diff.
+2. Rotasi semua secret lama lebih dulu.
+3. Lakukan history cleanup terkoordinasi pada branch/base repository, atau buat branch baru dari history yang sudah dibersihkan.
+4. Pastikan `.env` tidak muncul sama sekali pada PR diff hasil cleanup.
+5. Baru lanjut review/merge hardening setelah diff bersih dan secret lama tidak berlaku.
+
 ## RLS Coverage
 
 Tabel yang sudah tercakup oleh hardening terbaru:
