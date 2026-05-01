@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { mockAssignments } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { getLocalDataWithInit, getLocalData, addLocalItem, saveLocalData } from '@/lib/localData';
+import { rethrowInProduction } from '@/lib/dataMode';
 
 interface AssignmentRaw {
     id: string;
@@ -93,7 +94,8 @@ export const useAssignments = (classId?: string, academicYear?: string) => {
 
                 if (error) throw error;
                 return data || [];
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage data for assignments');
                 const rawAssignments = getLocalAssignments();
                 const localLecturers = getLocalData<{ id: string; name: string }>('lecturers');
@@ -130,7 +132,8 @@ export const useCreateAssignment = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for create assignment');
                 const results = assignments.map(a => 
                     addLocalItem<AssignmentRaw>('assignments', {
@@ -178,7 +181,8 @@ export const useDeleteAssignment = () => {
                 const { error } = await query;
 
                 if (error) throw error;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for delete assignment');
                 const assignments = getLocalAssignments();
                 const filtered = assignments.filter(a => {

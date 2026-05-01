@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { rethrowInProduction } from '@/lib/dataMode';
 
 export interface Setting {
     id: string;
@@ -40,6 +41,7 @@ export const useSetting = (key: string) => {
                 if (error) throw error;
                 return data;
             } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using mock setting for', key);
                 if (key === 'current_academic_year') {
                     return {

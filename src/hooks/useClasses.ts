@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { mockClasses } from '@/data/mockData';
 import { getLocalDataWithInit, addLocalItem, updateLocalItem, deleteLocalItem } from '@/lib/localData';
+import { rethrowInProduction } from '@/lib/dataMode';
 
 export interface Class {
     id: string;
@@ -41,7 +42,8 @@ export const useClasses = (level?: number, programId?: string) => {
 
                 if (error) throw error;
                 return classes || [];
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage data for classes');
                 let filtered = getLocalClasses();
                 if (level) filtered = filtered.filter(c => c.level === level);
@@ -67,7 +69,8 @@ export const useCreateClass = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for create class');
                 return addLocalItem<Class>('classes', { name, level, program_id } as Class);
             }
@@ -76,7 +79,7 @@ export const useCreateClass = () => {
             queryClient.invalidateQueries({ queryKey: ['classes'] });
             toast({
                 title: "Kelas berhasil dibuat",
-                description: "Kelas baru telah ditambahkan ke sistem (Mode Offline).",
+                description: "Kelas baru telah ditambahkan ke sistem.",
             });
         },
         onError: (error: any) => {
@@ -109,7 +112,8 @@ export const useUpdateClass = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for update class');
                 const updated = updateLocalItem<Class>('classes', id, {
                     name,
@@ -124,7 +128,7 @@ export const useUpdateClass = () => {
             queryClient.invalidateQueries({ queryKey: ['classes'] });
             toast({
                 title: "Kelas berhasil diperbarui",
-                description: "Data kelas telah diubah (Mode Offline).",
+                description: "Data kelas telah diubah.",
             });
         },
         onError: (error: any) => {
@@ -150,7 +154,8 @@ export const useDeleteClass = () => {
                     .eq('id', id);
 
                 if (error) throw error;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for delete class');
                 deleteLocalItem<Class>('classes', id);
             }
@@ -161,7 +166,7 @@ export const useDeleteClass = () => {
             queryClient.invalidateQueries({ queryKey: ['courses'] });
             toast({
                 title: "Kelas berhasil dihapus",
-                description: "Kelas telah dihapus dari sistem (Mode Offline).",
+                description: "Kelas telah dihapus dari sistem.",
             });
         },
         onError: (error: any) => {

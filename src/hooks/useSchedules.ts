@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getLocalData, saveLocalData } from '@/lib/localData';
+import { rethrowInProduction } from '@/lib/dataMode';
 
 const MAX_DAILY_SKS_PER_LECTURER = 4;
 
@@ -352,7 +353,8 @@ export const useSchedules = (academicYear?: string, classId?: string) => {
                 return ((data || []) as Schedule[])
                     .filter(schedule => !!schedule.assignments)
                     .filter(schedule => !classId || schedule.assignments.classes?.id === classId);
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage data for schedules');
                 return getLocalSchedules(academicYear, classId);
             }
@@ -409,7 +411,8 @@ export const useCheckScheduleConflicts = () => {
                 );
 
                 return collectConflicts(target, (schedules || []) as Schedule[], params.excludeScheduleId);
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage conflict check');
                 const assignment = hydrateLocalAssignment(params.assignmentId);
                 if (!assignment) return [];
@@ -454,7 +457,8 @@ export const useCreateSchedule = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for create schedule');
                 const storedSchedules = getLocalData<StoredSchedule>('schedules');
                 const newSchedule: StoredSchedule = {
@@ -517,7 +521,8 @@ export const useUpdateSchedule = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for update schedule');
                 const storedSchedules = getLocalData<StoredSchedule>('schedules');
                 const updatedSchedules = storedSchedules.map(schedule =>
@@ -569,7 +574,8 @@ export const useDeleteSchedule = () => {
                     .eq('id', id);
 
                 if (error) throw error;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for delete schedule');
                 const storedSchedules = getLocalData<StoredSchedule>('schedules');
                 saveLocalData('schedules', storedSchedules.filter(schedule => schedule.id !== id));
@@ -661,7 +667,8 @@ export const useGenerateAutoSchedule = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for auto generate schedule');
                 const hydratedAssignments = params.assignmentIds
                     .map(hydrateLocalAssignment)
@@ -717,7 +724,8 @@ export const useCheckAllConflicts = () => {
 
                 if (error) throw error;
                 return processConflicts((data || []) as Schedule[], params);
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for check all conflicts');
                 return processConflicts(getLocalSchedules(params.academicYear), params);
             }

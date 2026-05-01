@@ -49,6 +49,20 @@ Migration hardening saat ini:
 
 - `20260430000000_add_academic_year_to_assignments.sql`
 - `20260430001000_harden_core_table_policies.sql`
+- `20260501000000_production_admin_rls.sql`
+- `20260501001000_multiuser_role_baseline.sql`
+
+## Production Access
+
+Mode production harus memakai Supabase sebagai sumber data utama.
+
+- Route aplikasi utama diproteksi login dan role `admin`.
+- Akun operasional harus memiliki `profiles.role = 'admin'`.
+- Role yang dikenali: `admin`, `operator`, `viewer`, `lecturer`, `user`.
+- Role `user` adalah status default/pending dan tidak boleh membaca data akademik.
+- Role non-admin belum boleh mengelola data akademik sampai permission per halaman selesai.
+- Local fallback hanya untuk development/demo. Jangan aktifkan `VITE_ENABLE_LOCAL_FALLBACK=true` di production.
+- Jika Supabase gagal di production, aplikasi harus menampilkan error, bukan menyimpan data bayangan di browser.
 
 ## GitHub Hygiene
 
@@ -60,6 +74,8 @@ Tidak boleh masuk repo:
 - `node_modules/`
 - `supabase/.temp/`
 - file backup atau restore JSON
+
+Jika `.env` pernah masuk Git, jangan lanjut deploy sebelum secret dirotasi dan rencana cleanup history disetujui. Detail audit production dicatat di [PRODUCTION_SECURITY_AUDIT.md](PRODUCTION_SECURITY_AUDIT.md).
 
 Sebelum push:
 

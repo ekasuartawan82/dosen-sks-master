@@ -5,6 +5,8 @@ import { GraduationCap, Users, BookOpen, BarChart3, Menu, X, MessageSquare, LogO
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import AcademicYearSelector from "./AcademicYearSelector";
+import { Badge } from "@/components/ui/badge";
+import { ROLE_LABELS } from "@/lib/roles";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,7 +16,7 @@ interface LayoutProps {
 
 const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, access, signOut } = useAuth();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -122,6 +124,9 @@ const Layout = ({ children, currentPage, onPageChange }: LayoutProps) => {
                   <div className="flex items-center space-x-2 text-sm">
                     <User className="h-4 w-4" />
                     <span>{user.email}</span>
+                    <Badge variant="outline" className="hidden sm:inline-flex">
+                      {ROLE_LABELS[access.role]}
+                    </Badge>
                   </div>
                   <Button variant="outline" size="sm" onClick={handleSignOut}>
                     <LogOut className="h-4 w-4" />

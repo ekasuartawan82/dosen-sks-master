@@ -1,4 +1,5 @@
 import { getStorageManager, getCurrentUserId } from './storage';
+import { canUseLocalFallback } from './dataMode';
 import { 
     mockPrograms, 
     mockClasses, 
@@ -16,6 +17,10 @@ let initializedUserId: string | null = null;
 
 // Initialize data for current user ONLY if no data exists at all
 export const initializeUserData = () => {
+    if (!canUseLocalFallback()) {
+        return;
+    }
+
     const userId = getCurrentUserId();
     
     // Skip if already initialized for this user in this session
