@@ -28,7 +28,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT public.has_app_role(ARRAY['admin', 'operator', 'viewer', 'lecturer'])
+  SELECT public.has_app_role(ARRAY['admin', 'operator', 'viewer'])
 $$;
 
 CREATE OR REPLACE FUNCTION public.can_manage_academic_data()

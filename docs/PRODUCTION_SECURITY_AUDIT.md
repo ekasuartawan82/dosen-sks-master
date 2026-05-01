@@ -43,14 +43,14 @@ Tabel yang sudah tercakup oleh hardening terbaru:
 | Tabel | Read | Write |
 | --- | --- | --- |
 | `profiles` | own profile, admin all | self update tanpa role escalation, admin all |
-| `programs` | app roles | admin only |
-| `lecturers` | app roles | admin only |
-| `courses` | app roles | admin only |
-| `classes` | app roles | admin only |
-| `assignments` | app roles | admin only |
-| `schedules` | app roles | admin only |
-| `settings` | app roles | admin only |
-| `posts` | app roles | admin only |
+| `programs` | admin/operator/viewer | admin only |
+| `lecturers` | admin/operator/viewer | admin only |
+| `courses` | admin/operator/viewer | admin only |
+| `classes` | admin/operator/viewer | admin only |
+| `assignments` | admin/operator/viewer | admin only |
+| `schedules` | admin/operator/viewer | admin only |
+| `settings` | admin/operator/viewer | admin only |
+| `posts` | admin/operator/viewer | admin only |
 
 Role yang dikenali:
 
@@ -63,8 +63,9 @@ Role yang dikenali:
 Catatan penting:
 
 - `user` adalah role pending dan tidak punya akses baca data akademik.
-- `operator`, `viewer`, dan `lecturer` saat ini hanya staging role.
-- `lecturer` belum dibatasi ke jadwal/mata kuliah miliknya sendiri.
+- `operator` dan `viewer` saat ini punya read-only global untuk data akademik single-institution.
+- `lecturer` adalah staging role dan tidak termasuk global read data akademik.
+- Lecturer-scoped access belum diaktifkan karena membutuhkan mapping aman `user_id -> lecturer_id`.
 - Semua read policy akademik masih single-institution, bukan tenant isolation.
 
 ## Risiko Yang Masih Terbuka
