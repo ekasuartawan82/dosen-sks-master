@@ -28,7 +28,8 @@ const RekapPage = () => {
   // Get all assignments for the selected class if specific class is chosen
   const { data: assignments, isLoading: loadingAssignments } = useAssignments(
     selectedClass === "all" ? undefined : selectedClass,
-    activeAcademicYear?.name
+    activeAcademicYear?.name,
+    selectedProgram
   );
 
   // Prepare report data
@@ -135,7 +136,10 @@ const RekapPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
         <ProgramFilter
           selectedProgram={selectedProgram}
-          onProgramChange={setSelectedProgram}
+          onProgramChange={(value) => {
+            setSelectedProgram(value);
+            setSelectedClass("all");
+          }}
           className="w-full"
         />
         
@@ -149,6 +153,7 @@ const RekapPage = () => {
           selectedClass={selectedClass}
           onClassChange={setSelectedClass}
           selectedLevel={selectedLevel}
+          selectedProgram={selectedProgram}
           className="w-full"
         />
       </div>

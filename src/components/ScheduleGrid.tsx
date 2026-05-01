@@ -8,11 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface ScheduleGridProps {
   classId: string;
   academicYear: string;
+  programId?: string;
   onSlotClick: (dayOfWeek: number, timeSlot: number) => void;
 }
 
-const ScheduleGrid = ({ classId, academicYear, onSlotClick }: ScheduleGridProps) => {
-  const { data: schedules, isLoading } = useSchedules(academicYear, classId);
+const ScheduleGrid = ({ classId, academicYear, programId, onSlotClick }: ScheduleGridProps) => {
+  const { data: schedules, isLoading } = useSchedules(academicYear, classId, programId);
 
   const getScheduleForSlot = (dayOfWeek: number, timeSlot: number) => {
     return schedules?.find(

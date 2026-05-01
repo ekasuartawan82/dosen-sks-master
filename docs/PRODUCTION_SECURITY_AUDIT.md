@@ -66,7 +66,34 @@ Catatan penting:
 - `operator` dan `viewer` saat ini punya read-only global untuk data akademik single-institution.
 - `lecturer` adalah staging role dan tidak termasuk global read data akademik.
 - Lecturer-scoped access belum diaktifkan karena membutuhkan mapping aman `user_id -> lecturer_id`.
+- Role per-prodi/kaprodi scoped access belum diaktifkan. Admin/operator/viewer masih membaca data lintas prodi.
 - Semua read policy akademik masih single-institution, bukan tenant isolation.
+
+## Multi-Prodi Data Integrity
+
+Baseline multi-prodi memakai constraint database, bukan hanya filter UI:
+
+- `classes.program_id` adalah sumber program untuk kelas.
+- `courses.program_id` harus sama dengan `classes.program_id` pada setiap assignment baru.
+- `lecturers.home_program_id` hanya prodi asal/pelaporan.
+- Dosen yang boleh mengajar suatu prodi harus punya mapping eksplisit di `lecturer_programs`.
+- `NULL` pada mapping dosen atau kelas bukan berarti lintas prodi; itu adalah data belum lengkap dan harus diremediasi.
+
+Migration audit/remediation `20260501002000_program_integrity_constraints.sql` menambahkan:
+
+- `lecturers.home_program_id`
+- `lecturer_programs`
+- view audit `audit_classes_missing_program`
+- view audit `audit_assignment_program_mismatches`
+- view audit `audit_assignment_lecturer_program_gaps`
+
+Migration enforcement `20260501003000_enforce_assignment_program_integrity.sql` baru memasang trigger `validate_assignment_program()`. Migration ini memiliki guard dan harus gagal bila salah satu audit view masih berisi row.
+
+Data lama yang masuk view audit belum boleh diperbaiki dengan backfill massal tanpa validasi akademik. Remediation wajib dilakukan terkontrol:
+
+- kelas tanpa prodi dimapping manual ke prodi yang benar;
+- assignment course/class mismatch diperbaiki sebelum enforcement;
+- dosen harus punya mapping eksplisit di `lecturer_programs` untuk prodi kelas yang diajar.
 
 ## Risiko Yang Masih Terbuka
 

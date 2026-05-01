@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateClass, useUpdateClass } from "@/hooks/useClasses";
+import { usePrograms } from "@/hooks/usePrograms";
 
 interface ClassFormProps {
   open: boolean;
@@ -13,15 +14,19 @@ interface ClassFormProps {
     id: string;
     name: string;
     level: number;
+    program_id?: string | null;
   } | null;
+  defaultProgramId?: string;
 }
 
-export const ClassForm = ({ open, onOpenChange, editingClass }: ClassFormProps) => {
+export const ClassForm = ({ open, onOpenChange, editingClass, defaultProgramId }: ClassFormProps) => {
   const [name, setName] = useState("");
   const [level, setLevel] = useState<number | null>(null);
+  const [programId, setProgramId] = useState("");
   
   const createClass = useCreateClass();
   const updateClass = useUpdateClass();
+  const { data: programs = [] } = usePrograms();
   
   const isEditing = !!editingClass;
   const isSubmitting = createClass.isPending || updateClass.isPending;
@@ -30,27 +35,32 @@ export const ClassForm = ({ open, onOpenChange, editingClass }: ClassFormProps) 
     if (editingClass) {
       setName(editingClass.name);
       setLevel(editingClass.level);
+      setProgramId(editingClass.program_id || defaultProgramId || "");
     } else {
       setName("");
       setLevel(null);
+      setProgramId(defaultProgramId || "");
     }
-  }, [editingClass, open]);
+  }, [defaultProgramId, editingClass, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !level) return;
+    if (!name.trim() || !level || !programId) return;
 
     try {
       if (isEditing) {
         await updateClass.mutateAsync({
           id: editingClass.id,
-          name: name.trim()
+          name: name.trim(),
+          level,
+          program_id: programId
         });
       } else {
         await createClass.mutateAsync({
           name: name.trim(),
-          level
+          level,
+          program_id: programId
         });
       }
       
@@ -86,6 +96,22 @@ export const ClassForm = ({ open, onOpenChange, editingClass }: ClassFormProps) 
               required
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="program">Program Studi</Label>
+            <Select value={programId} onValueChange={setProgramId} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih program studi" />
+              </SelectTrigger>
+              <SelectContent>
+                {programs.map((program) => (
+                  <SelectItem key={program.id} value={program.id}>
+                    {program.name} ({program.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           
           {!isEditing && (
             <div className="space-y-2">
@@ -118,7 +144,7 @@ export const ClassForm = ({ open, onOpenChange, editingClass }: ClassFormProps) 
             </Button>
             <Button 
               type="submit" 
-              disabled={isSubmitting || !name.trim() || (!isEditing && !level)}
+              disabled={isSubmitting || !name.trim() || !programId || (!isEditing && !level)}
             >
               {isSubmitting ? "Menyimpan..." : (isEditing ? "Simpan Perubahan" : "Tambah Kelas")}
             </Button>

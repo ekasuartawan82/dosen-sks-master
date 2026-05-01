@@ -29,10 +29,12 @@ export interface Assignment {
         id: string;
         name: string;
         sks: number;
+        program_id?: string | null;
     };
     classes: {
         id: string;
         name: string;
+        program_id?: string | null;
     } | null;
 }
 
@@ -53,9 +55,9 @@ const matchesAcademicYear = (assignment: { academic_year?: string }, academicYea
     return !academicYear || !assignment.academic_year || assignment.academic_year === academicYear;
 };
 
-export const useAssignments = (classId?: string, academicYear?: string) => {
+export const useAssignments = (classId?: string, academicYear?: string, programId?: string) => {
     return useQuery({
-        queryKey: ['assignments', classId, academicYear],
+        queryKey: ['assignments', classId, academicYear, programId],
         queryFn: async (): Promise<Assignment[]> => {
             try {
                 let query = supabase
@@ -71,14 +73,16 @@ export const useAssignments = (classId?: string, academicYear?: string) => {
               id,
               name
             ),
-            courses (
+            courses!inner (
               id,
               name,
-              sks
+              sks,
+              program_id
             ),
-            classes (
+            classes!inner (
               id,
-              name
+              name,
+              program_id
             )
           `);
 
@@ -90,6 +94,12 @@ export const useAssignments = (classId?: string, academicYear?: string) => {
                     query = query.eq('academic_year', academicYear);
                 }
 
+                if (programId && programId !== 'all') {
+                    query = query
+                        .eq('courses.program_id', programId)
+                        .eq('classes.program_id', programId);
+                }
+
                 const { data, error } = await query.order('created_at');
 
                 if (error) throw error;
@@ -99,14 +109,21 @@ export const useAssignments = (classId?: string, academicYear?: string) => {
                 console.warn('Using local storage data for assignments');
                 const rawAssignments = getLocalAssignments();
                 const localLecturers = getLocalData<{ id: string; name: string }>('lecturers');
-                const localCourses = getLocalData<{ id: string; name: string; sks: number }>('courses');
-                const localClasses = getLocalData<{ id: string; name: string }>('classes');
+                const localCourses = getLocalData<{ id: string; name: string; sks: number; program_id?: string | null }>('courses');
+                const localClasses = getLocalData<{ id: string; name: string; program_id?: string | null }>('classes');
 
                 let filtered = rawAssignments;
                 if (classId) {
                     filtered = filtered.filter(a => a.class_id === classId);
                 }
                 filtered = filtered.filter(a => matchesAcademicYear(a, academicYear));
+                if (programId && programId !== 'all') {
+                    filtered = filtered.filter(a => {
+                        const course = localCourses.find(c => c.id === a.course_id);
+                        const classInfo = localClasses.find(c => c.id === a.class_id);
+                        return course?.program_id === programId && classInfo?.program_id === programId;
+                    });
+                }
 
                 return filtered.map(a => ({
                     ...a,

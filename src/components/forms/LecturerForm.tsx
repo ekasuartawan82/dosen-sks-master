@@ -19,7 +19,8 @@ interface LecturerFormProps {
         name: string;
         status: LecturerStatus;
         structural_position: StructuralPosition;
-        program_id?: string;
+        program_id?: string | null;
+        home_program_id?: string | null;
     };
 }
 
@@ -42,8 +43,8 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
             setName(lecturer.name || "");
             setStatus(lecturer.status || "");
             setStructuralPosition(lecturer.structural_position || "Tidak Ada");
-            setProgramId(lecturer.program_id || "");
-            setLecturerType(lecturer.program_id ? "program_studi" : "tenaga_pengajar");
+            setProgramId(lecturer.home_program_id || lecturer.program_id || "");
+            setLecturerType(lecturer.home_program_id || lecturer.program_id ? "program_studi" : "tenaga_pengajar");
         } else {
             // Reset form for new lecturer
             setName("");
@@ -67,6 +68,7 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
                     status: status as LecturerStatus,
                     structural_position: structuralPosition,
                     program_id: lecturerType === "program_studi" ? programId : null,
+                    home_program_id: lecturerType === "program_studi" ? programId : null,
                 });
             } else {
                 // Create new lecturer
@@ -74,7 +76,8 @@ const LecturerForm = ({ open, onOpenChange, lecturer }: LecturerFormProps) => {
                     name: name.trim(),
                     status: status as LecturerStatus,
                     structural_position: structuralPosition,
-                    program_id: lecturerType === "program_studi" ? programId : null
+                    program_id: lecturerType === "program_studi" ? programId : null,
+                    home_program_id: lecturerType === "program_studi" ? programId : null
                 });
             }
 

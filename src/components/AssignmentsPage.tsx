@@ -28,9 +28,10 @@ const AssignmentsPage = () => {
     const [showForm, setShowForm] = useState(false);
     const [showClassForm, setShowClassForm] = useState(false);
     const { data: activeAcademicYear } = useActiveAcademicYear();
-    const { data: lecturers, isLoading: loadingLecturers } = useLecturers(undefined, false, activeAcademicYear?.name);
+    const { isLoading: loadingLecturers } = useLecturers(selectedProgram, false, activeAcademicYear?.name);
     const { data: courses, isLoading: loadingCourses } = useCourses(selectedProgram, selectedLevel, selectedClass, activeAcademicYear?.name);
-    const { data: allClasses, isLoading: loadingClasses } = useClasses();
+    const programId = selectedProgram !== "all" ? selectedProgram : undefined;
+    const { data: allClasses, isLoading: loadingClasses } = useClasses(undefined, programId);
     const deleteAssignment = useDeleteAssignment();
     const { toast } = useToast();
     const queryClient = useQueryClient();
@@ -133,7 +134,10 @@ const AssignmentsPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <ProgramFilter
                     selectedProgram={selectedProgram}
-                    onProgramChange={setSelectedProgram}
+                    onProgramChange={(value) => {
+                        setSelectedProgram(value);
+                        setSelectedClass("all");
+                    }}
                     className="w-full"
                 />
 
@@ -148,6 +152,7 @@ const AssignmentsPage = () => {
                         selectedClass={selectedClass}
                         onClassChange={setSelectedClass}
                         selectedLevel={selectedLevel}
+                        selectedProgram={selectedProgram}
                         className="flex-1"
                     />
                     {selectedLevel !== "all" && (
@@ -290,6 +295,7 @@ const AssignmentsPage = () => {
                         queryClient.invalidateQueries({ queryKey: ['classes'] });
                     }
                 }}
+                defaultProgramId={selectedProgram !== "all" ? selectedProgram : undefined}
             />
         </div>
     );

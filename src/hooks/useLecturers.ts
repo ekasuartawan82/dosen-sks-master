@@ -10,7 +10,8 @@ export interface Lecturer {
     name: string;
     status: string;
     structural_position: string;
-    program_id?: string;
+    program_id?: string | null;
+    home_program_id?: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -68,6 +69,18 @@ export const useLecturers = (programId?: string, includeTeachingStaff: boolean =
         queryKey: ['lecturers', programId, includeTeachingStaff, academicYear],
         queryFn: async (): Promise<LecturerWithWorkload[]> => {
             try {
+                let mappedLecturerIds: string[] | undefined;
+                if (programId && programId !== 'all') {
+                    const { data: mappings, error: mappingsError } = await supabase
+                        .from('lecturer_programs')
+                        .select('lecturer_id')
+                        .eq('program_id', programId);
+
+                    if (mappingsError) throw mappingsError;
+                    mappedLecturerIds = [...new Set((mappings || []).map(mapping => mapping.lecturer_id))];
+                    if (mappedLecturerIds.length === 0) return [];
+                }
+
                 // Build the query for lecturers with their course assignments
                 let lecturerQuery = supabase
                     .from('lecturers')
@@ -77,6 +90,7 @@ export const useLecturers = (programId?: string, includeTeachingStaff: boolean =
             status,
             structural_position,
             program_id,
+            home_program_id,
             assignments (
               academic_year,
               course_id,
@@ -95,9 +109,9 @@ export const useLecturers = (programId?: string, includeTeachingStaff: boolean =
             )
           `);
 
-                // Filter by program if specified 
-                if (programId && programId !== 'all') {
-                    lecturerQuery = lecturerQuery.eq('program_id', programId);
+                // Filter by explicit lecturer-program mapping if specified.
+                if (mappedLecturerIds) {
+                    lecturerQuery = lecturerQuery.in('id', mappedLecturerIds);
                 }
 
                 // Filter by lecturer type - if includeTeachingStaff is true, include all lecturers
@@ -329,6 +343,25 @@ export const useLecturers = (programId?: string, includeTeachingStaff: boolean =
     });
 };
 
+export const useLecturerProgramMappings = (programId?: string) => {
+    return useQuery({
+        queryKey: ['lecturer-programs', programId],
+        queryFn: async () => {
+            let query = supabase
+                .from('lecturer_programs')
+                .select('lecturer_id, program_id');
+
+            if (programId && programId !== 'all') {
+                query = query.eq('program_id', programId);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            return data || [];
+        }
+    });
+};
+
 export const useCreateLecturer = () => {
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -343,6 +376,17 @@ export const useCreateLecturer = () => {
                     .single();
 
                 if (error) throw error;
+                const programId = lecturer.home_program_id || lecturer.program_id;
+                if (programId) {
+                    const { error: mappingError } = await supabase
+                        .from('lecturer_programs')
+                        .upsert({
+                            lecturer_id: data.id,
+                            program_id: programId
+                        });
+
+                    if (mappingError) throw mappingError;
+                }
                 return data;
             } catch (error) {
                 rethrowInProduction(error);
@@ -382,6 +426,17 @@ export const useUpdateLecturer = () => {
                     .single();
 
                 if (error) throw error;
+                const programId = lecturer.home_program_id || lecturer.program_id;
+                if (programId) {
+                    const { error: mappingError } = await supabase
+                        .from('lecturer_programs')
+                        .upsert({
+                            lecturer_id: id,
+                            program_id: programId
+                        });
+
+                    if (mappingError) throw mappingError;
+                }
                 return data;
             } catch (error) {
                 rethrowInProduction(error);

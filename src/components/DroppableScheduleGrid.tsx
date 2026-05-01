@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface DroppableScheduleGridProps {
   classId: string;
   academicYear: string;
+  programId?: string;
   onDrop: (assignmentId: string, dayOfWeek: number, timeSlot: number) => void;
   draggedSKS: number | null;
   activeId: string | null;
@@ -124,11 +125,12 @@ const DraggableScheduledCard = ({ schedule, onDelete }: DraggableScheduledCardPr
 const DroppableScheduleGrid = ({ 
   classId, 
   academicYear, 
+  programId,
   onDrop, 
   draggedSKS, 
   activeId 
 }: DroppableScheduleGridProps) => {
-  const { data: schedules, isLoading } = useSchedules(academicYear, classId);
+  const { data: schedules, isLoading } = useSchedules(academicYear, classId, programId);
   const deleteSchedule = useDeleteSchedule();
   const draggedScheduleId = activeId?.startsWith('schedule:') ? activeId.replace('schedule:', '') : null;
 

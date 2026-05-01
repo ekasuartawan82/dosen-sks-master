@@ -20,6 +20,7 @@ export interface Schedule {
             id: string;
             name: string;
             sks: number;
+            program_id?: string | null;
         };
         lecturers: {
             id: string;
@@ -155,13 +156,17 @@ const hydrateLocalSchedule = (schedule: StoredSchedule): Schedule | null => {
     };
 };
 
-const getLocalSchedules = (academicYear?: string, classId?: string): Schedule[] => {
+const getLocalSchedules = (academicYear?: string, classId?: string, programId?: string): Schedule[] => {
     const storedSchedules = getLocalData<StoredSchedule>('schedules');
     return storedSchedules
         .map(hydrateLocalSchedule)
         .filter((schedule): schedule is Schedule => !!schedule)
         .filter(schedule => !academicYear || schedule.academic_year === academicYear)
         .filter(schedule => !classId || schedule.assignments.classes.id === classId)
+        .filter(schedule => !programId || programId === 'all' || (
+            schedule.assignments.courses.program_id === programId &&
+            schedule.assignments.classes.program_id === programId
+        ))
         .sort((a, b) => a.day_of_week - b.day_of_week || a.time_slot - b.time_slot);
 };
 
@@ -311,26 +316,27 @@ const persistLocalSchedules = (schedules: Schedule[]) => {
     saveLocalData('schedules', stored);
 };
 
-export const useSchedules = (academicYear?: string, classId?: string) => {
+export const useSchedules = (academicYear?: string, classId?: string, programId?: string) => {
     return useQuery({
-        queryKey: ['schedules', academicYear, classId],
+        queryKey: ['schedules', academicYear, classId, programId],
         queryFn: async (): Promise<Schedule[]> => {
             try {
                 let query = supabase
                     .from('schedules')
                     .select(`
             *,
-            assignments (
-              courses (
+            assignments!inner (
+              courses!inner (
                 id,
                 name,
-                sks
+                sks,
+                program_id
               ),
               lecturers (
                 id,
                 name
               ),
-              classes (
+              classes!inner (
                 id,
                 name,
                 level,
@@ -347,16 +353,26 @@ export const useSchedules = (academicYear?: string, classId?: string) => {
                     query = query.eq('assignments.class_id', classId);
                 }
 
+                if (programId && programId !== 'all') {
+                    query = query
+                        .eq('assignments.courses.program_id', programId)
+                        .eq('assignments.classes.program_id', programId);
+                }
+
                 const { data, error } = await query.order('day_of_week').order('time_slot');
 
                 if (error) throw error;
                 return ((data || []) as Schedule[])
                     .filter(schedule => !!schedule.assignments)
-                    .filter(schedule => !classId || schedule.assignments.classes?.id === classId);
+                    .filter(schedule => !classId || schedule.assignments.classes?.id === classId)
+                    .filter(schedule => !programId || programId === 'all' || (
+                        schedule.assignments.courses?.program_id === programId &&
+                        schedule.assignments.classes?.program_id === programId
+                    ));
             } catch (error) {
                 rethrowInProduction(error);
                 console.warn('Using local storage data for schedules');
-                return getLocalSchedules(academicYear, classId);
+                return getLocalSchedules(academicYear, classId, programId);
             }
         },
         enabled: !!academicYear

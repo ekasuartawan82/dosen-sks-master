@@ -176,6 +176,7 @@ const CoursesPage = () => {
                             selectedClass={selectedClass}
                             onClassChange={setSelectedClass}
                             selectedLevel={selectedLevel}
+                            selectedProgram={selectedProgram}
                             className="flex-1"
                         />
                     </div>

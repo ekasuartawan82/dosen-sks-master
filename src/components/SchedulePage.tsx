@@ -55,7 +55,7 @@ const SchedulePage = () => {
   const { data: classes, isLoading: isLoadingClasses } = useClasses(levelNum, programId);
   const { data: academicYears = [] } = useAcademicYears();
   const { data: activeAcademicYear } = useActiveAcademicYear();
-  const { data: assignments } = useAssignments(selectedClass, selectedAcademicYear);
+  const { data: assignments } = useAssignments(selectedClass, selectedAcademicYear, programId);
   const createSchedule = useCreateSchedule();
   const updateSchedule = useUpdateSchedule();
   const checkConflicts = useCheckScheduleConflicts();
@@ -395,6 +395,7 @@ const SchedulePage = () => {
               <CourseBank 
                 classId={selectedClass}
                 academicYear={selectedAcademicYear}
+                programId={programId}
               />
             </div>
             
@@ -408,6 +409,7 @@ const SchedulePage = () => {
                   <DroppableScheduleGrid
                     classId={selectedClass}
                     academicYear={selectedAcademicYear}
+                    programId={programId}
                     onDrop={handleScheduleCreate}
                     draggedSKS={draggedAssignment?.courses.sks || draggedSchedule?.assignments.courses.sks || null}
                     activeId={activeId}

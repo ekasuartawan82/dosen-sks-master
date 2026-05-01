@@ -8,11 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface CourseBankProps {
   classId?: string;
   academicYear?: string;
+  programId?: string;
 }
 
-const CourseBank = ({ classId, academicYear }: CourseBankProps) => {
-  const { data: assignments, isLoading: isLoadingAssignments } = useAssignments(classId, academicYear);
-  const { data: schedules, isLoading: isLoadingSchedules } = useSchedules(academicYear, classId);
+const CourseBank = ({ classId, academicYear, programId }: CourseBankProps) => {
+  const { data: assignments, isLoading: isLoadingAssignments } = useAssignments(classId, academicYear, programId);
+  const { data: schedules, isLoading: isLoadingSchedules } = useSchedules(academicYear, classId, programId);
 
   // Filter out assignments that are already scheduled
   const availableAssignments = assignments?.filter(assignment => 

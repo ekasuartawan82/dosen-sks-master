@@ -51,6 +51,23 @@ Migration hardening saat ini:
 - `20260430001000_harden_core_table_policies.sql`
 - `20260501000000_production_admin_rls.sql`
 - `20260501001000_multiuser_role_baseline.sql`
+- `20260501002000_program_integrity_constraints.sql` audit/remediation multi-prodi
+- `20260501003000_enforce_assignment_program_integrity.sql` enforcement multi-prodi setelah audit bersih
+
+Multi-prodi integrity rules:
+
+- Kelas wajib dipetakan ke satu program studi sebelum dipakai untuk penugasan baru.
+- Penugasan dosen harus memakai mata kuliah dan kelas dari program studi yang sama.
+- Dosen lintas prodi tidak boleh dimaknai dari `NULL`; kelayakan mengajar lintas prodi wajib eksplisit di `lecturer_programs`.
+- `lecturers.home_program_id` hanya untuk prodi asal/pelaporan. Hak mengajar program ditentukan oleh `lecturer_programs`.
+- Data lama yang belum punya mapping prodi harus masuk audit/remediation dulu, bukan di-backfill massal tanpa validasi akademik.
+
+Remediation sebelum enforcement:
+
+- `audit_classes_missing_program` harus `0`: setiap kelas lama dimapping manual ke prodi yang benar.
+- `audit_assignment_program_mismatches` harus `0`: assignment dengan course/class beda prodi harus diperbaiki atau dibuat ulang.
+- `audit_assignment_lecturer_program_gaps` harus `0`: setiap dosen pada assignment harus punya baris eksplisit di `lecturer_programs` untuk prodi kelas tersebut.
+- Jangan jalankan migration enforcement `20260501003000_enforce_assignment_program_integrity.sql` sampai tiga audit view tersebut bersih.
 
 ## Production Access
 
@@ -61,6 +78,7 @@ Mode production harus memakai Supabase sebagai sumber data utama.
 - Role yang dikenali: `admin`, `operator`, `viewer`, `lecturer`, `user`.
 - Role `user` adalah status default/pending dan tidak boleh membaca data akademik.
 - Role non-admin belum boleh mengelola data akademik sampai permission per halaman selesai.
+- Role per-prodi/kaprodi scoped access belum aktif. Saat ini admin/operator/viewer masih global lintas prodi sesuai RLS baseline.
 - Local fallback hanya untuk development/demo. Jangan aktifkan `VITE_ENABLE_LOCAL_FALLBACK=true` di production.
 - Jika Supabase gagal di production, aplikasi harus menampilkan error, bukan menyimpan data bayangan di browser.
 
