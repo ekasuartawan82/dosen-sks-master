@@ -69,6 +69,13 @@ Remediation sebelum enforcement:
 - `audit_assignment_lecturer_program_gaps` harus `0`: setiap dosen pada assignment harus punya baris eksplisit di `lecturer_programs` untuk prodi kelas tersebut.
 - Jangan jalankan migration enforcement `20260501003000_enforce_assignment_program_integrity.sql` sampai tiga audit view tersebut bersih.
 
+Historical class ambiguity:
+
+- Kelas lama yang berisi assignment dari beberapa prodi harus dianggap `INVALID_HISTORICAL` sampai ada keputusan domain akademik.
+- Kelas lama tanpa assignment evidence harus dianggap `NO_DATA` dan tidak boleh ditebak programnya.
+- Jika shared-class historis valid, kelas tersebut harus legacy/read-only dan tidak dipakai untuk assignment baru.
+- Jika shared-class adalah artefak model lama, kelas harus dipecah per prodi dan assignment historis diremap terkontrol.
+
 ## Production Access
 
 Mode production harus memakai Supabase sebagai sumber data utama.

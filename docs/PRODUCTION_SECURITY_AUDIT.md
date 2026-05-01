@@ -95,6 +95,21 @@ Data lama yang masuk view audit belum boleh diperbaiki dengan backfill massal ta
 - assignment course/class mismatch diperbaiki sebelum enforcement;
 - dosen harus punya mapping eksplisit di `lecturer_programs` untuk prodi kelas yang diajar.
 
+### Historical Class Ambiguity
+
+Audit remediation awal menemukan kelas historis yang tidak bisa langsung dipaksa ke satu prodi:
+
+- 1 kelas tervalidasi dan sudah dapat dimapping ke prodi tunggal.
+- 6 kelas berstatus `INVALID_HISTORICAL` karena berisi assignment dari beberapa prodi.
+- 2 kelas berstatus `NO_DATA` karena tidak memiliki assignment evidence.
+
+Final remediation bergantung pada konfirmasi domain akademik:
+
+- Jika shared-class historis memang valid, kelas tersebut harus ditandai legacy/read-only dan tidak dipakai untuk assignment baru.
+- Jika shared-class hanya artefak model lama, kelas harus dipecah per prodi dan assignment historis diremap secara terkontrol.
+
+Tidak boleh menjalankan enforcement migration sampai keputusan domain tercatat dan audit bersih.
+
 ## Risiko Yang Masih Terbuka
 
 ### Tenant Isolation
