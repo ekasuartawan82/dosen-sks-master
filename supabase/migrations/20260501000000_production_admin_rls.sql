@@ -1,5 +1,5 @@
 -- Production-safe access model before multi-user permissions are introduced.
--- Authenticated users may read core academic data, but only admins may mutate it.
+-- Admins may read and mutate core academic data. A later migration can widen reads safely.
 
 CREATE OR REPLACE FUNCTION public.current_user_role()
 RETURNS text
@@ -76,7 +76,7 @@ DROP POLICY IF EXISTS "Admins can delete lecturers" ON public.lecturers;
 
 CREATE POLICY "Lecturers are readable by authenticated users"
 ON public.lecturers FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create lecturers"
 ON public.lecturers FOR INSERT TO authenticated
@@ -103,7 +103,7 @@ DROP POLICY IF EXISTS "Admins can delete courses" ON public.courses;
 
 CREATE POLICY "Courses are readable by authenticated users"
 ON public.courses FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create courses"
 ON public.courses FOR INSERT TO authenticated
@@ -129,7 +129,7 @@ DROP POLICY IF EXISTS "Admins can delete programs" ON public.programs;
 
 CREATE POLICY "Programs are readable by authenticated users"
 ON public.programs FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create programs"
 ON public.programs FOR INSERT TO authenticated
@@ -156,7 +156,7 @@ DROP POLICY IF EXISTS "Admins can delete classes" ON public.classes;
 
 CREATE POLICY "Classes are readable by authenticated users"
 ON public.classes FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create classes"
 ON public.classes FOR INSERT TO authenticated
@@ -183,7 +183,7 @@ DROP POLICY IF EXISTS "Admins can delete assignments" ON public.assignments;
 
 CREATE POLICY "Assignments are readable by authenticated users"
 ON public.assignments FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create assignments"
 ON public.assignments FOR INSERT TO authenticated
@@ -210,7 +210,7 @@ DROP POLICY IF EXISTS "Admins can delete schedules" ON public.schedules;
 
 CREATE POLICY "Schedules are readable by authenticated users"
 ON public.schedules FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create schedules"
 ON public.schedules FOR INSERT TO authenticated
@@ -237,7 +237,7 @@ DROP POLICY IF EXISTS "Admins can delete settings" ON public.settings;
 
 CREATE POLICY "Settings are readable by authenticated users"
 ON public.settings FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create settings"
 ON public.settings FOR INSERT TO authenticated
@@ -264,7 +264,7 @@ DROP POLICY IF EXISTS "Admins can delete posts" ON public.posts;
 
 CREATE POLICY "Posts are readable by authenticated users"
 ON public.posts FOR SELECT TO authenticated
-USING (true);
+USING (public.is_admin());
 
 CREATE POLICY "Admins can create posts"
 ON public.posts FOR INSERT TO authenticated
