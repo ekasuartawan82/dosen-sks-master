@@ -67,6 +67,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_legacy: boolean
+          legacy_reason: string | null
           level: number
           name: string
           program_id: string | null
@@ -75,6 +77,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_legacy?: boolean
+          legacy_reason?: string | null
           level: number
           name: string
           program_id?: string | null
@@ -83,6 +87,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_legacy?: boolean
+          legacy_reason?: string | null
           level?: number
           name?: string
           program_id?: string | null
@@ -359,6 +365,50 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_snapshots: {
+        Row: {
+          academic_year: string
+          created_at: string
+          created_by: string | null
+          generated_at: string
+          id: string
+          metadata: Json
+          scope: string
+          snapshot_data: Json
+          target_id: string | null
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string
+          created_by?: string | null
+          generated_at?: string
+          id?: string
+          metadata?: Json
+          scope: string
+          snapshot_data?: Json
+          target_id?: string | null
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string
+          created_by?: string | null
+          generated_at?: string
+          id?: string
+          metadata?: Json
+          scope?: string
+          snapshot_data?: Json
+          target_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_snapshots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

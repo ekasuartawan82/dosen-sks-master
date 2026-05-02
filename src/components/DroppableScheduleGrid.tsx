@@ -45,7 +45,13 @@ const DroppableSlot = ({ dayId, timeSlotId, sks, onDrop, isActive, children }: D
 };
 
 interface DraggableScheduledCardProps {
-  schedule: Schedule & { slotIndex: number; totalSlots: number };
+  schedule: Schedule & {
+    slotIndex: number;
+    totalSlots: number;
+    segmentIndex: number;
+    segmentCount: number;
+    totalSks: number;
+  };
   onDelete: (scheduleId: string) => void;
 }
 
@@ -103,12 +109,21 @@ const DraggableScheduledCard = ({ schedule, onDelete }: DraggableScheduledCardPr
         <div className="font-semibold text-sm leading-tight text-primary">
           {schedule.assignments.courses.name}
         </div>
+        {schedule.segmentCount > 1 && schedule.segmentIndex > 0 && (
+          <div className="text-[11px] font-medium text-primary/70">
+            Lanjutan setelah istirahat
+          </div>
+        )}
         <div className="text-xs text-muted-foreground leading-tight font-medium">
           {schedule.assignments.lecturers.name}
         </div>
         <div className="flex items-center gap-2 mt-auto">
           <Badge variant="outline" className="text-xs px-2 py-1 bg-background/50">
-            {schedule.assignments.courses.sks} SKS
+            {schedule.segmentCount > 1 && schedule.segmentIndex === 0
+              ? `(${schedule.totalSks} SKS)`
+              : schedule.totalSlots === schedule.totalSks
+              ? `${schedule.totalSks} SKS`
+              : `${schedule.totalSlots}/${schedule.totalSks} SKS`}
           </Badge>
           {schedule.has_conflict && (
             <div className="flex items-center gap-1 text-destructive">
@@ -134,11 +149,24 @@ const DroppableScheduleGrid = ({
   const deleteSchedule = useDeleteSchedule();
   const draggedScheduleId = activeId?.startsWith('schedule:') ? activeId.replace('schedule:', '') : null;
 
-  const getScheduleForSlot = (dayOfWeek: number, timeSlot: number) => {
-    return schedules?.find(
-      (schedule) => 
-        schedule.day_of_week === dayOfWeek && 
-        schedule.time_slot === timeSlot
+  const getTeachingSlotIds = (startSlot: number, sks: number) => {
+    const slotIds: number[] = [];
+    let currentSlot = startSlot;
+
+    while (slotIds.length < sks) {
+      const timeSlotData = TIME_SLOTS.find(slot => slot.id === currentSlot);
+      if (!timeSlotData) return slotIds;
+      if (!timeSlotData.isBreak) slotIds.push(currentSlot);
+      currentSlot++;
+    }
+
+    return slotIds;
+  };
+
+  const getOccupyingScheduleForSlot = (dayOfWeek: number, timeSlot: number) => {
+    return schedules?.find((schedule) =>
+      schedule.day_of_week === dayOfWeek &&
+      getTeachingSlotIds(schedule.time_slot, schedule.assignments.courses.sks).includes(timeSlot)
     );
   };
 
@@ -163,7 +191,7 @@ const DroppableScheduleGrid = ({
       }
       
       // Check if non-break slot is already occupied by another schedule
-      const scheduleForSlot = getScheduleForSlot(dayOfWeek, currentSlot);
+      const scheduleForSlot = getOccupyingScheduleForSlot(dayOfWeek, currentSlot);
       if (scheduleForSlot && scheduleForSlot.id !== draggedScheduleId) return false;
       
       // Count this slot towards our SKS requirement
@@ -190,26 +218,57 @@ const DroppableScheduleGrid = ({
     );
   }
 
-  // Create a map to track which schedules span multiple slots
+  // Create a map to track visual schedule segments. A course that crosses a
+  // fixed break is rendered as separate before/after-break cards.
   const scheduleMap = new Map();
   schedules?.forEach(schedule => {
     const sks = schedule.assignments.courses.sks;
     let currentSlot = schedule.time_slot;
     let sksCount = 0;
-    
-    // Map schedule slots, skipping break times
+    const segments: Array<Array<{ slotId: number; originalSlotIndex: number }>> = [];
+    let currentSegment: Array<{ slotId: number; originalSlotIndex: number }> = [];
+
     while (sksCount < sks) {
       const timeSlotData = TIME_SLOTS.find(slot => slot.id === currentSlot);
-      
+
+      if (!timeSlotData) break;
+
+      if (timeSlotData.isBreak) {
+        if (currentSegment.length > 0) {
+          segments.push(currentSegment);
+          currentSegment = [];
+        }
+        currentSlot++;
+        continue;
+      }
+
       if (timeSlotData && !timeSlotData.isBreak) {
-        scheduleMap.set(
-          `${schedule.day_of_week}-${currentSlot}`,
-          { ...schedule, slotIndex: sksCount, totalSlots: sks }
-        );
+        currentSegment.push({ slotId: currentSlot, originalSlotIndex: sksCount });
         sksCount++;
       }
       currentSlot++;
     }
+
+    if (currentSegment.length > 0) {
+      segments.push(currentSegment);
+    }
+
+    segments.forEach((segment, segmentIndex) => {
+      segment.forEach((slot, slotIndex) => {
+        scheduleMap.set(
+          `${schedule.day_of_week}-${slot.slotId}`,
+          {
+            ...schedule,
+            slotIndex,
+            originalSlotIndex: slot.originalSlotIndex,
+            totalSlots: segment.length,
+            segmentIndex,
+            segmentCount: segments.length,
+            totalSks: sks
+          }
+        );
+      });
+    });
   });
 
   return (

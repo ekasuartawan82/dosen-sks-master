@@ -10,6 +10,8 @@ export interface Class {
     name: string;
     level: number;
     program_id?: string;
+    is_legacy?: boolean;
+    legacy_reason?: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -27,6 +29,7 @@ export const useClasses = (level?: number, programId?: string) => {
                 let query = supabase
                     .from('classes')
                     .select('*')
+                    .eq('is_legacy', false)
                     .order('level', { ascending: true })
                     .order('name', { ascending: true });
 
@@ -46,6 +49,7 @@ export const useClasses = (level?: number, programId?: string) => {
                 rethrowInProduction(error);
                 console.warn('Using local storage data for classes');
                 let filtered = getLocalClasses();
+                filtered = filtered.filter(c => !c.is_legacy);
                 if (level) filtered = filtered.filter(c => c.level === level);
                 if (programId) filtered = filtered.filter(c => c.program_id === programId);
                 return filtered;

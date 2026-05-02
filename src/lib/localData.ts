@@ -9,7 +9,7 @@ import {
     mockSchedules 
 } from '@/data/mockData';
 
-export type DataType = 'programs' | 'classes' | 'lecturers' | 'courses' | 'assignments' | 'schedules' | 'settings';
+export type DataType = 'programs' | 'classes' | 'lecturers' | 'courses' | 'assignments' | 'schedules' | 'schedule_snapshots' | 'settings';
 
 // Track if initialization has been done for current session
 let initialized = false;

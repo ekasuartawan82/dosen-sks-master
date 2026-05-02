@@ -1,4 +1,4 @@
-const ENABLE_LOCAL_FALLBACK = import.meta.env.DEV || import.meta.env.VITE_ENABLE_LOCAL_FALLBACK === 'true';
+const ENABLE_LOCAL_FALLBACK = import.meta.env.VITE_ENABLE_LOCAL_FALLBACK === 'true';
 
 export const canUseLocalFallback = () => ENABLE_LOCAL_FALLBACK;
 
