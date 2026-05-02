@@ -87,7 +87,7 @@ Migration audit/remediation `20260501002000_program_integrity_constraints.sql` m
 - view audit `audit_assignment_program_mismatches`
 - view audit `audit_assignment_lecturer_program_gaps`
 
-Migration enforcement `20260501003000_enforce_assignment_program_integrity.sql` baru memasang trigger `validate_assignment_program()`. Migration ini memiliki guard dan harus gagal bila salah satu audit view masih berisi row.
+Migration enforcement `20260502003000_enforce_assignment_program_integrity.sql` baru memasang trigger `validate_assignment_program()`. Migration ini memiliki guard dan harus gagal bila salah satu audit view masih berisi row.
 
 Data lama yang masuk view audit belum boleh diperbaiki dengan backfill massal tanpa validasi akademik. Remediation wajib dilakukan terkontrol:
 
