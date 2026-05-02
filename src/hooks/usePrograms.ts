@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { mockPrograms } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { getLocalDataWithInit, saveLocalData, addLocalItem, updateLocalItem, deleteLocalItem } from '@/lib/localData';
+import { rethrowInProduction } from '@/lib/dataMode';
 
 export interface Program {
     id: string;
@@ -30,7 +31,8 @@ export const usePrograms = () => {
 
                 if (error) throw error;
                 return data || [];
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage data for programs');
                 return getLocalPrograms();
             }
@@ -53,7 +55,8 @@ export const useCreateProgram = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for create program');
                 return addLocalItem<Program>('programs', program as Program);
             }
@@ -62,7 +65,7 @@ export const useCreateProgram = () => {
             queryClient.invalidateQueries({ queryKey: ['programs'] });
             toast({
                 title: "Program Studi berhasil dibuat",
-                description: "Data telah tersimpan (Mode Offline)",
+                description: "Data telah tersimpan",
             });
         },
         onError: (error: any) => {
@@ -91,7 +94,8 @@ export const useUpdateProgram = () => {
 
                 if (error) throw error;
                 return data;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for update program');
                 const updated = updateLocalItem<Program>('programs', id, program);
                 if (!updated) throw new Error("Program not found");
@@ -105,7 +109,7 @@ export const useUpdateProgram = () => {
             queryClient.invalidateQueries({ queryKey: ['lecturers'] });
             toast({
                 title: "Program Studi berhasil diperbarui",
-                description: "Perubahan telah tersimpan (Mode Offline)",
+                description: "Perubahan telah tersimpan",
             });
         },
         onError: (error: any) => {
@@ -131,7 +135,8 @@ export const useDeleteProgram = () => {
                     .eq('id', id);
 
                 if (error) throw error;
-            } catch {
+            } catch (error) {
+                rethrowInProduction(error);
                 console.warn('Using local storage for delete program');
                 deleteLocalItem<Program>('programs', id);
             }
@@ -143,7 +148,7 @@ export const useDeleteProgram = () => {
             queryClient.invalidateQueries({ queryKey: ['lecturers'] });
             toast({
                 title: "Program Studi berhasil dihapus",
-                description: "Data telah dihapus (Mode Offline)",
+                description: "Data telah dihapus",
             });
         },
         onError: (error: any) => {

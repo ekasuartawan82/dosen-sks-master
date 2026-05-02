@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCourses } from "@/hooks/useCourses";
-import { useLecturers } from "@/hooks/useLecturers";
+import { useLecturerProgramMappings, useLecturers } from "@/hooks/useLecturers";
 import { useClasses } from "@/hooks/useClasses";
 import { useCreateAssignment } from "@/hooks/useAssignments";
 import { useActiveAcademicYear } from "@/hooks/useAcademicYear";
@@ -35,9 +35,12 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
     const queryClient = useQueryClient();
     const { data: activeAcademicYear } = useActiveAcademicYear();
     const { data: courses } = useCourses(formProgram, formLevel, undefined, activeAcademicYear?.name);
-    const { data: programLecturers } = useLecturers(formProgram);
-    const { data: teachingStaff } = useLecturers(undefined, true); // Get all lecturers including teaching staff
-    const { data: allClasses } = useClasses();
+    const selectedCourseData = courses?.find(c => c.id === selectedCourse);
+    const selectedCourseProgramId = selectedCourseData?.program_id || (formProgram !== "all" ? formProgram : undefined);
+    const levelNumber = formLevel && formLevel !== "all" ? parseInt(formLevel) : undefined;
+    const { data: teachingStaff } = useLecturers(undefined, true);
+    const { data: lecturerProgramMappings = [] } = useLecturerProgramMappings(selectedCourseProgramId);
+    const { data: allClasses } = useClasses(levelNumber, selectedCourseProgramId);
     const createAssignment = useCreateAssignment();
 
     const isSubmitting = createAssignment.isPending;
@@ -45,9 +48,10 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
     // Courses are already filtered by the hook
     const availableCourses = courses || [];
 
-    // Filter classes by selected level
+    // Classes are constrained by selected course/program and level.
     const availableClasses = allClasses?.filter(cls =>
-        !formLevel || formLevel === "all" || cls.level.toString() === formLevel
+        (!formLevel || formLevel === "all" || cls.level.toString() === formLevel) &&
+        (!selectedCourseProgramId || cls.program_id === selectedCourseProgramId)
     ) || [];
 
     useEffect(() => {
@@ -79,7 +83,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
             return;
         }
 
-        if (!formClass) {
+        if (!formClass || formClass === "all") {
             toast({
                 title: "Error",
                 description: "Pilih kelas untuk penugasan",
@@ -125,21 +129,19 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
     };
 
     // Find already assigned lecturers for the selected course and specific class
-    const selectedCourseData = courses?.find(c => c.id === selectedCourse);
     const alreadyAssignedLecturerIds = selectedCourseData?.assignedLecturers
         ?.filter(lecturer => lecturer.classId === formClass)
         ?.map(lecturer => lecturer.id) || [];
 
     // Get available lecturers based on selected type
     const getAvailableLecturers = () => {
+        const eligibleLecturerIds = new Set(lecturerProgramMappings.map(mapping => mapping.lecturer_id));
         let lecturerList = [];
 
         if (lecturerType === "program_studi") {
-            // Show lecturers from all programs (allow cross-program assignments)
-            lecturerList = teachingStaff?.filter(lecturer => lecturer.programId) || [];
+            lecturerList = teachingStaff?.filter(lecturer => lecturer.programId && eligibleLecturerIds.has(lecturer.id)) || [];
         } else {
-            // Show teaching staff (lecturers without program_id)
-            lecturerList = teachingStaff?.filter(lecturer => !lecturer.programId) || [];
+            lecturerList = teachingStaff?.filter(lecturer => !lecturer.programId && eligibleLecturerIds.has(lecturer.id)) || [];
         }
 
         // Filter out already assigned lecturers
@@ -166,14 +168,24 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
                         <Label>Program Studi</Label>
                         <ProgramFilter
                             selectedProgram={formProgram}
-                            onProgramChange={setFormProgram}
+                            onProgramChange={(value) => {
+                                setFormProgram(value);
+                                setFormClass("all");
+                                setSelectedCourse("");
+                                setSelectedLecturers([]);
+                            }}
                         />
                     </div>
 
                     {/* Level Selection */}
                     <div className="space-y-2">
                         <Label>Tingkat</Label>
-                        <Select value={formLevel} onValueChange={setFormLevel}>
+                        <Select value={formLevel} onValueChange={(value) => {
+                            setFormLevel(value);
+                            setFormClass("all");
+                            setSelectedCourse("");
+                            setSelectedLecturers([]);
+                        }}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih tingkat" />
                             </SelectTrigger>
@@ -190,12 +202,15 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
                     {formLevel && formLevel !== "all" && (
                         <div className="space-y-2">
                             <Label>Kelas</Label>
-                            <Select value={formClass} onValueChange={setFormClass}>
+                            <Select value={formClass} onValueChange={(value) => {
+                                setFormClass(value);
+                                setSelectedLecturers([]);
+                            }}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Pilih kelas" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Semua Kelas</SelectItem>
+                                    <SelectItem value="all" disabled>Pilih kelas</SelectItem>
                                     {availableClasses.map((cls) => (
                                         <SelectItem key={cls.id} value={cls.id}>
                                             {cls.name}
@@ -210,7 +225,10 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
                     {formProgram && formProgram !== "all" && formLevel && formLevel !== "all" && formClass && formClass !== "all" && (
                         <div className="space-y-2">
                             <Label>Mata Kuliah</Label>
-                            <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                            <Select value={selectedCourse} onValueChange={(value) => {
+                                setSelectedCourse(value);
+                                setSelectedLecturers([]);
+                            }}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Pilih mata kuliah" />
                                 </SelectTrigger>
@@ -309,7 +327,7 @@ const AssignmentForm = ({ open, onOpenChange, selectedProgram = "all", selectedL
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={!selectedCourse || !formClass || selectedLecturers.length === 0 || isSubmitting}
+                        disabled={!selectedCourse || !formClass || formClass === "all" || selectedLecturers.length === 0 || isSubmitting}
                     >
                         {isSubmitting ? "Menyimpan..." : "Simpan Penugasan"}
                     </Button>

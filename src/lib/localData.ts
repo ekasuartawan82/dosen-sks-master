@@ -1,4 +1,5 @@
 import { getStorageManager, getCurrentUserId } from './storage';
+import { canUseLocalFallback } from './dataMode';
 import { 
     mockPrograms, 
     mockClasses, 
@@ -8,7 +9,7 @@ import {
     mockSchedules 
 } from '@/data/mockData';
 
-export type DataType = 'programs' | 'classes' | 'lecturers' | 'courses' | 'assignments' | 'schedules' | 'settings';
+export type DataType = 'programs' | 'classes' | 'lecturers' | 'courses' | 'assignments' | 'schedules' | 'schedule_snapshots' | 'settings';
 
 // Track if initialization has been done for current session
 let initialized = false;
@@ -16,6 +17,10 @@ let initializedUserId: string | null = null;
 
 // Initialize data for current user ONLY if no data exists at all
 export const initializeUserData = () => {
+    if (!canUseLocalFallback()) {
+        return;
+    }
+
     const userId = getCurrentUserId();
     
     // Skip if already initialized for this user in this session

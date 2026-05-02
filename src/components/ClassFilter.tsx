@@ -6,12 +6,14 @@ interface ClassFilterProps {
   selectedClass: string;
   onClassChange: (classId: string) => void;
   selectedLevel?: string;
+  selectedProgram?: string;
   className?: string;
 }
 
-const ClassFilter = ({ selectedClass, onClassChange, selectedLevel, className }: ClassFilterProps) => {
+const ClassFilter = ({ selectedClass, onClassChange, selectedLevel, selectedProgram, className }: ClassFilterProps) => {
   const levelNumber = selectedLevel && selectedLevel !== "all" ? parseInt(selectedLevel) : undefined;
-  const { data: classes = [], isLoading } = useClasses(levelNumber);
+  const programId = selectedProgram && selectedProgram !== "all" ? selectedProgram : undefined;
+  const { data: classes = [], isLoading } = useClasses(levelNumber, programId);
 
   if (isLoading) {
     return (

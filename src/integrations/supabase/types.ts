@@ -67,6 +67,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_legacy: boolean
+          legacy_reason: string | null
           level: number
           name: string
           program_id: string | null
@@ -75,6 +77,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_legacy?: boolean
+          legacy_reason?: string | null
           level: number
           name: string
           program_id?: string | null
@@ -83,6 +87,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_legacy?: boolean
+          legacy_reason?: string | null
           level?: number
           name?: string
           program_id?: string | null
@@ -139,6 +145,7 @@ export type Database = {
       lecturers: {
         Row: {
           created_at: string
+          home_program_id: string | null
           id: string
           name: string
           program_id: string | null
@@ -148,6 +155,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          home_program_id?: string | null
           id?: string
           name: string
           program_id?: string | null
@@ -157,6 +165,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          home_program_id?: string | null
           id?: string
           name?: string
           program_id?: string | null
@@ -166,7 +175,47 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "lecturers_home_program_id_fkey"
+            columns: ["home_program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lecturers_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lecturer_programs: {
+        Row: {
+          created_at: string
+          lecturer_id: string
+          program_id: string
+        }
+        Insert: {
+          created_at?: string
+          lecturer_id: string
+          program_id: string
+        }
+        Update: {
+          created_at?: string
+          lecturer_id?: string
+          program_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecturer_programs_lecturer_id_fkey"
+            columns: ["lecturer_id"]
+            isOneToOne: false
+            referencedRelation: "lecturers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecturer_programs_program_id_fkey"
             columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "programs"
@@ -320,6 +369,50 @@ export type Database = {
           },
         ]
       }
+      schedule_snapshots: {
+        Row: {
+          academic_year: string
+          created_at: string
+          created_by: string | null
+          generated_at: string
+          id: string
+          metadata: Json
+          scope: string
+          snapshot_data: Json
+          target_id: string | null
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string
+          created_by?: string | null
+          generated_at?: string
+          id?: string
+          metadata?: Json
+          scope: string
+          snapshot_data?: Json
+          target_id?: string | null
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string
+          created_by?: string | null
+          generated_at?: string
+          id?: string
+          metadata?: Json
+          scope?: string
+          snapshot_data?: Json
+          target_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_snapshots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           created_at: string
@@ -349,6 +442,90 @@ export type Database = {
       }
     }
     Views: {
+      audit_assignment_lecturer_program_gaps: {
+        Row: {
+          assignment_id: string | null
+          class_id: string | null
+          class_name: string | null
+          class_program_id: string | null
+          lecturer_id: string | null
+          lecturer_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_lecturer_id_fkey"
+            columns: ["lecturer_id"]
+            isOneToOne: false
+            referencedRelation: "lecturers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_program_id_fkey"
+            columns: ["class_program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_assignment_program_mismatches: {
+        Row: {
+          assignment_id: string | null
+          class_id: string | null
+          class_name: string | null
+          class_program_id: string | null
+          course_id: string | null
+          course_name: string | null
+          course_program_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_program_id_fkey"
+            columns: ["class_program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_program_id_fkey"
+            columns: ["course_program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_classes_missing_program: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          level: number | null
+          name: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null

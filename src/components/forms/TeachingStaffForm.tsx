@@ -60,7 +60,8 @@ const TeachingStaffForm = ({ open, onOpenChange, staff }: TeachingStaffFormProps
             name: name.trim(),
             status: status as LecturerStatus,
             structural_position: structuralPosition,
-            program_id: null, // Non-functional and practitioner lecturers don't belong to specific programs
+            program_id: null,
+            home_program_id: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', staff.id);
@@ -75,7 +76,8 @@ const TeachingStaffForm = ({ open, onOpenChange, staff }: TeachingStaffFormProps
             name: name.trim(),
             status: status as LecturerStatus,
             structural_position: structuralPosition,
-            program_id: null // Non-functional and practitioner lecturers don't belong to specific programs
+            program_id: null,
+            home_program_id: null
           });
 
         if (error) throw error;

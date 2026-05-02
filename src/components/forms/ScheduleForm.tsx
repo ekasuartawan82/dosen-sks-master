@@ -36,6 +36,7 @@ const formSchema = z.object({
 interface ScheduleFormProps {
   classId: string;
   academicYear: string;
+  programId?: string;
   dayOfWeek: number;
   timeSlot: number;
   open: boolean;
@@ -45,6 +46,7 @@ interface ScheduleFormProps {
 const ScheduleForm = ({
   classId,
   academicYear,
+  programId,
   dayOfWeek,
   timeSlot,
   open,
@@ -54,7 +56,7 @@ const ScheduleForm = ({
   const [conflictData, setConflictData] = useState<any[]>([]);
   const [pendingSubmission, setPendingSubmission] = useState<any>(null);
 
-  const { data: assignments } = useAssignments(classId, academicYear);
+  const { data: assignments } = useAssignments(classId, academicYear, programId);
   const createScheduleMutation = useCreateSchedule();
   const checkConflictsMutation = useCheckScheduleConflicts();
 

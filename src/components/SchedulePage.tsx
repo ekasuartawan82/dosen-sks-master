@@ -3,7 +3,7 @@ import { DndContext, DragOverlay, DragStartEvent, DragEndEvent, closestCenter } 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Printer, Settings, Zap, AlertTriangle } from "lucide-react";
+import { Printer, Settings, Zap, AlertTriangle, RotateCcw } from "lucide-react";
 import DroppableScheduleGrid from "./DroppableScheduleGrid";
 import CourseBank from "./CourseBank";
 import DragCourseCard from "./DragCourseCard";
@@ -15,7 +15,7 @@ import ProgramFilter from "./ProgramFilter";
 import LevelFilter from "./LevelFilter";
 import { useClasses } from "@/hooks/useClasses";
 import { useAcademicYears, useActiveAcademicYear } from "@/hooks/useAcademicYear";
-import { ConflictCheck, DAYS, Schedule, TIME_SLOTS, useCreateSchedule, useCheckScheduleConflicts, useGenerateAutoSchedule, useCheckAllConflicts, useUpdateSchedule } from "@/hooks/useSchedules";
+import { ConflictCheck, DAYS, GeneratedScheduleConflict, Schedule, TIME_SLOTS, useCreateSchedule, useCheckScheduleConflicts, useGenerateAutoSchedule, useCheckAllConflicts, useUpdateSchedule, useRestoreLatestScheduleSnapshot, usePreviewGenerateAutoSchedule } from "@/hooks/useSchedules";
 import { useAssignments, Assignment } from "@/hooks/useAssignments";
 import { usePrograms } from "@/hooks/usePrograms";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 interface ConflictNotice {
   lecturer_name: string;
   conflicts: Array<{
+    program_id?: string | null;
     class_name: string;
     course_name: string;
     day: number;
@@ -36,6 +37,8 @@ type DragData =
   | { type: 'assignment'; assignment: Assignment }
   | { type: 'schedule'; schedule: Schedule };
 
+type GenerateScope = 'class' | 'program';
+
 const SchedulePage = () => {
   const [selectedProgram, setSelectedProgram] = useState<string>("all");
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
@@ -47,6 +50,8 @@ const SchedulePage = () => {
   const [draggedAssignment, setDraggedAssignment] = useState<Assignment | null>(null);
   const [draggedSchedule, setDraggedSchedule] = useState<Schedule | null>(null);
   const [conflicts, setConflicts] = useState<ConflictNotice[]>([]);
+  const [generateConflicts, setGenerateConflicts] = useState<GeneratedScheduleConflict[]>([]);
+  const [generateScope, setGenerateScope] = useState<GenerateScope>("class");
 
   const programId = selectedProgram === "all" ? undefined : selectedProgram;
   const levelNum = selectedLevel === "all" ? undefined : parseInt(selectedLevel);
@@ -55,11 +60,13 @@ const SchedulePage = () => {
   const { data: classes, isLoading: isLoadingClasses } = useClasses(levelNum, programId);
   const { data: academicYears = [] } = useAcademicYears();
   const { data: activeAcademicYear } = useActiveAcademicYear();
-  const { data: assignments } = useAssignments(selectedClass, selectedAcademicYear);
+  const { data: assignments } = useAssignments(selectedClass, selectedAcademicYear, programId);
   const createSchedule = useCreateSchedule();
   const updateSchedule = useUpdateSchedule();
   const checkConflicts = useCheckScheduleConflicts();
   const generateAutoSchedule = useGenerateAutoSchedule();
+  const previewGenerateAutoSchedule = usePreviewGenerateAutoSchedule();
+  const restoreLatestSnapshot = useRestoreLatestScheduleSnapshot();
   const { mutate: checkAllConflictsMutate } = useCheckAllConflicts();
   const { toast } = useToast();
 
@@ -73,14 +80,12 @@ const SchedulePage = () => {
   const refreshConflictNotices = useCallback(() => {
     if (selectedAcademicYear) {
       checkAllConflictsMutate({
-        academicYear: selectedAcademicYear,
-        programId: programId,
-        level: levelNum
+        academicYear: selectedAcademicYear
       }, {
         onSuccess: (data) => setConflicts(data)
       });
     }
-  }, [checkAllConflictsMutate, levelNum, programId, selectedAcademicYear]);
+  }, [checkAllConflictsMutate, selectedAcademicYear]);
 
   // Check conflicts when filters change
   useEffect(() => {
@@ -122,6 +127,10 @@ const SchedulePage = () => {
     handleScheduleCreate(assignmentId, dayOfWeek, timeSlot);
   };
 
+  const getProgramCode = (programId?: string | null) => {
+    return programs?.find(program => program.id === programId)?.code || "Tanpa Prodi";
+  };
+
   const buildConflictMessage = (items: ConflictCheck[]) => {
     return items.map(c => {
       const day = DAYS.find(d => d.id === c.day_of_week)?.label || 'hari yang sama';
@@ -130,7 +139,7 @@ const SchedulePage = () => {
         ? `kelas ${c.conflicted_class_name}`
         : c.conflicted_lecturer_name;
 
-      return `${subject} sudah terjadwal "${c.conflicted_course_name}" pada ${day}, ${slot}`;
+      return `${subject} | ${getProgramCode(c.conflicted_program_id)} | ${c.conflicted_class_name} | ${day} ${slot} | ${c.conflicted_course_name}`;
     }).join('\n');
   };
 
@@ -215,18 +224,85 @@ const SchedulePage = () => {
     }
   };
 
-  const handleGenerateAutoSchedule = () => {
-    if (!selectedClass || !selectedAcademicYear || !assignments) return;
+  const getGenerateTargetId = () => {
+    if (generateScope === "class") return selectedClass;
+    return programId;
+  };
+
+  const getGenerateScopeLabel = () => {
+    if (generateScope === "class") {
+      const className = classes?.find(cls => cls.id === selectedClass)?.name;
+      return className ? `kelas ${className}` : "kelas terpilih";
+    }
+
+    if (generateScope === "program") {
+      const programName = programs?.find(program => program.id === programId)?.code;
+      return programName ? `prodi ${programName}` : "prodi terpilih";
+    }
+
+    return "prodi terpilih";
+  };
+
+  const canRunScopedScheduleAction = !!selectedAcademicYear
+    && (generateScope !== "class" || !!selectedClass)
+    && (generateScope !== "program" || !!programId);
+
+  const getDayLabel = (dayId: number) => DAYS.find(day => day.id === dayId)?.label || `Hari ${dayId}`;
+
+  const getTimeLabel = (timeSlot: number) => TIME_SLOTS.find(slot => slot.id === timeSlot)?.label || `Slot ${timeSlot}`;
+
+  const buildGeneratedConflictMessage = (items: GeneratedScheduleConflict[]) => {
+    return items.map((item, index) => (
+      `${index + 1}. ${item.lecturer_name} | ${getProgramCode(item.program_id)} | ${item.class_name} | ${getDayLabel(item.day_of_week)} ${getTimeLabel(item.time_slot)} | ${item.course_name}`
+    )).join('\n');
+  };
+
+  const handleGenerateAutoSchedule = async () => {
+    if (!selectedAcademicYear || !canRunScopedScheduleAction) return;
+
+    try {
+      const params = {
+        scope: generateScope,
+        targetId: getGenerateTargetId(),
+        academicYear: selectedAcademicYear,
+      };
+      const preview = await previewGenerateAutoSchedule.mutateAsync(params);
+      setGenerateConflicts(preview.conflicts);
+
+      const conflictSummary = preview.conflict_count > 0
+        ? `${preview.conflict_count} konflik ditemukan:\n\n${buildGeneratedConflictMessage(preview.conflicts)}\n\n`
+        : "Tidak ada konflik terdeteksi.\n\n";
+
+      const shouldProceed = window.confirm(
+        `Preview generate untuk ${getGenerateScopeLabel()} selesai.\n\n${conflictSummary}Generate akan menyimpan snapshot terlebih dahulu, lalu menyimpan ${preview.generated_count} jadwal hasil generate. Lanjutkan simpan hasil generate?`
+      );
+
+      if (!shouldProceed) return;
+
+      generateAutoSchedule.mutate(params, {
+        onSuccess: refreshConflictNotices
+      });
+    } catch (error) {
+      toast({
+        title: "Gagal preview generate jadwal",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan saat memeriksa konflik generate",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRestoreLatestSnapshot = () => {
+    if (!selectedAcademicYear || !canRunScopedScheduleAction) return;
 
     const shouldProceed = window.confirm(
-      `Generate jadwal otomatis untuk semua mata kuliah di kelas ini?\n\nSistem akan memilih slot dengan beban harian dosen paling ringan dan menandai jadwal yang tetap bertabrakan. Jadwal dapat digeser manual setelahnya.`
+      `Restore snapshot jadwal terakhir untuk ${getGenerateScopeLabel()}?\n\nRestore hanya akan menghapus dan mengganti jadwal dalam scope terpilih. Jadwal prodi/kelas lain tidak akan disentuh.`
     );
 
     if (shouldProceed) {
-      generateAutoSchedule.mutate({
-        classId: selectedClass,
+      restoreLatestSnapshot.mutate({
+        scope: generateScope,
+        targetId: getGenerateTargetId(),
         academicYear: selectedAcademicYear,
-        assignmentIds: assignments.map(a => a.id)
       }, {
         onSuccess: refreshConflictNotices
       });
@@ -279,7 +355,7 @@ const SchedulePage = () => {
                         Cetak Jadwal
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                    <DialogContent className="schedule-print-dialog max-w-4xl max-h-[90vh] overflow-auto">
                       <SchedulePrintView
                         classId={selectedClass}
                         academicYear={selectedAcademicYear || activeAcademicYear?.name}
@@ -354,21 +430,61 @@ const SchedulePage = () => {
               </div>
             </div>
 
-            {/* Auto Generate Button */}
-            {selectedClass && assignments && (
-              <div className="flex flex-col items-center gap-2 pt-4">
-                <Button 
-                  onClick={handleGenerateAutoSchedule}
-                  className="flex items-center gap-2"
-                  disabled={generateAutoSchedule.isPending}
-                >
-                  <Zap className="h-4 w-4" />
-                  {generateAutoSchedule.isPending ? "Generating..." : "Generate Jadwal Otomatis"}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Prioritas generate: sebar beban harian dosen, hindari bentrok dosen/kelas, lalu isi slot paling awal yang tersedia.
-                </p>
+            {/* Scoped Auto Generate / Restore */}
+            <div className="rounded-md border bg-muted/30 p-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_1fr] md:items-end">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Scope Generate</label>
+                  <Select value={generateScope} onValueChange={(value) => setGenerateScope(value as GenerateScope)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih scope" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="class">Generate per kelas</SelectItem>
+                      <SelectItem value="program">Generate per prodi</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={handleGenerateAutoSchedule}
+                    className="flex items-center gap-2"
+                    disabled={!canRunScopedScheduleAction || previewGenerateAutoSchedule.isPending || generateAutoSchedule.isPending || restoreLatestSnapshot.isPending}
+                  >
+                    <Zap className="h-4 w-4" />
+                    {previewGenerateAutoSchedule.isPending ? "Preview..." : generateAutoSchedule.isPending ? "Generating..." : "Generate Jadwal Otomatis"}
+                  </Button>
+                  <Button
+                    onClick={handleRestoreLatestSnapshot}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    disabled={!canRunScopedScheduleAction || generateAutoSchedule.isPending || restoreLatestSnapshot.isPending}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    {restoreLatestSnapshot.isPending ? "Restoring..." : "Restore Snapshot Terakhir"}
+                  </Button>
+                </div>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Generate selalu melakukan preview konflik global, meminta konfirmasi, lalu membuat snapshot database sebelum menyimpan hasil. Scope kelas/prodi hanya mengganti jadwal di target tersebut.
+              </p>
+            </div>
+
+            {generateConflicts.length > 0 && (
+              <Alert className="border-destructive bg-destructive/10">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>{generateConflicts.length} konflik ditemukan pada preview generate.</strong>
+                  <div className="mt-2 space-y-1 text-sm">
+                    {generateConflicts.map((conflict, idx) => (
+                      <div key={`${conflict.lecturer_name}-${conflict.day_of_week}-${conflict.time_slot}-${idx}`}>
+                        {idx + 1}. {conflict.lecturer_name} | {getProgramCode(conflict.program_id)} | {conflict.class_name} | {getDayLabel(conflict.day_of_week)} {getTimeLabel(conflict.time_slot)} | {conflict.course_name}
+                      </div>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </Alert>
             )}
 
             {/* Conflict Warning */}
@@ -376,10 +492,17 @@ const SchedulePage = () => {
               <Alert className="border-destructive bg-destructive/10">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Peringatan Konflik Jadwal:</strong> Ditemukan {conflicts.length} potensi konflik dosen. 
+                  <strong>Peringatan Konflik Jadwal:</strong> {conflicts.reduce((sum, conflict) => sum + conflict.conflicts.length, 0)} konflik ditemukan.
                   {conflicts.map((conflict, idx) => (
                     <div key={idx} className="mt-1 text-sm">
                       • {conflict.lecturer_name}: {conflict.conflicts.length} jadwal bertabrakan
+                      <div className="mt-1 pl-4">
+                        {conflict.conflicts.map((item, itemIdx) => (
+                          <div key={`${item.class_name}-${item.day}-${item.time_slot}-${itemIdx}`}>
+                            {getProgramCode(item.program_id)} | {item.class_name} | {getDayLabel(item.day)} {getTimeLabel(item.time_slot)} | {item.course_name}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </AlertDescription>
@@ -395,6 +518,7 @@ const SchedulePage = () => {
               <CourseBank 
                 classId={selectedClass}
                 academicYear={selectedAcademicYear}
+                programId={programId}
               />
             </div>
             
@@ -408,6 +532,7 @@ const SchedulePage = () => {
                   <DroppableScheduleGrid
                     classId={selectedClass}
                     academicYear={selectedAcademicYear}
+                    programId={programId}
                     onDrop={handleScheduleCreate}
                     draggedSKS={draggedAssignment?.courses.sks || draggedSchedule?.assignments.courses.sks || null}
                     activeId={activeId}
